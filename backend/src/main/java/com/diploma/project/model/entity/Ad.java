@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "ads")
@@ -24,6 +25,20 @@ public class Ad {
     private Double price;
     private Double latitude;
     private Double longitude;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AdType type;
+
+    private String category;
+    private String keywords;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
     @PrePersist
     protected void onCreate() {
