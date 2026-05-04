@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +35,15 @@ public class AdController {
     @PostMapping
     public ResponseEntity<Ad> createAd(@RequestBody Ad ad) {
         return ResponseEntity.status(201).body(adService.createAd(ad));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Ad> updateAd(@PathVariable Long id, @RequestBody Ad updatedAd) {
+        Ad ad = adService.updateAd(id, updatedAd);
+        if (ad == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(ad);
     }
 
     @DeleteMapping("/{id}")

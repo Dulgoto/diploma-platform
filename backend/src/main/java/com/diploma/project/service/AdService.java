@@ -11,5 +11,7 @@ public interface AdService {
 
     Ad createAd(Ad ad);
 
+    Ad updateAd(Long id, Ad updatedAd);
+
     void deleteAd(Long id);
 }

@@ -32,6 +32,24 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
+    public Ad updateAd(Long id, Ad updatedAd) {
+        return adRepository
+                .findById(id)
+                .map(existing -> {
+                    existing.setTitle(updatedAd.getTitle());
+                    existing.setDescription(updatedAd.getDescription());
+                    existing.setPrice(updatedAd.getPrice());
+                    existing.setLatitude(updatedAd.getLatitude());
+                    existing.setLongitude(updatedAd.getLongitude());
+                    existing.setType(updatedAd.getType());
+                    existing.setCategory(updatedAd.getCategory());
+                    existing.setKeywords(updatedAd.getKeywords());
+                    return adRepository.save(existing);
+                })
+                .orElse(null);
+    }
+
+    @Override
     public void deleteAd(Long id) {
         adRepository.deleteById(id);
     }
