@@ -6,6 +6,7 @@ import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.model.dto.UserRegisterRequest;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.UserRepository;
+import com.diploma.project.security.JwtService;
 import com.diploma.project.service.AuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,10 +16,13 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthServiceImpl(
+            UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -48,7 +52,8 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid email or password");
         }
-        return new AuthResponse(null, user.getEmail(), user.getRole());
+        String token = jwtService.generateToken(user.getEmail());
+        return new AuthResponse(token, user.getEmail(), user.getRole());
     }
 
     private static UserPrivateDto toPrivateDto(User user) {
