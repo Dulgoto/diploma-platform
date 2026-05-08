@@ -2,6 +2,7 @@ package com.diploma.project.service.impl;
 
 import com.diploma.project.model.entity.Ad;
 import com.diploma.project.repository.AdRepository;
+import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdService;
 import org.springframework.stereotype.Service;
 
@@ -11,9 +12,11 @@ import java.util.List;
 public class AdServiceImpl implements AdService {
 
     private final AdRepository adRepository;
+    private final UserRepository userRepository;
 
-    public AdServiceImpl(AdRepository adRepository) {
+    public AdServiceImpl(AdRepository adRepository, UserRepository userRepository) {
         this.adRepository = adRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -27,15 +30,19 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
-    public Ad createAd(Ad ad) {
+    public Ad createAd(Ad ad, String email) {
+        ad.setOwner(userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found")));
         return adRepository.save(ad);
     }
 
     @Override
-    public Ad updateAd(Long id, Ad updatedAd) {
+    public Ad updateAd(Long id, Ad updatedAd, String email) {
         return adRepository
                 .findById(id)
                 .map(existing -> {
+                    if (existing.getOwner() == null || !existing.getOwner().getEmail().equals(email)) {
+                        throw new RuntimeException("You are not the owner of this ad");
+                    }
                     existing.setTitle(updatedAd.getTitle());
                     existing.setDescription(updatedAd.getDescription());
                     existing.setPrice(updatedAd.getPrice());
@@ -50,7 +57,11 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
-    public void deleteAd(Long id) {
-        adRepository.deleteById(id);
+    public void deleteAd(Long id, String email) {
+        Ad ad = adRepository.findById(id).orElseThrow(() -> new RuntimeException("Ad not found"));
+        if (ad.getOwner() == null || !ad.getOwner().getEmail().equals(email)) {
+            throw new RuntimeException("You are not the owner of this ad");
+        }
+        adRepository.delete(ad);
     }
 }

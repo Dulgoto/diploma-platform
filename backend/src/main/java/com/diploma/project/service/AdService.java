@@ -9,9 +9,9 @@ public interface AdService {
 
     Ad getAdById(Long id);
 
-    Ad createAd(Ad ad);
+    Ad createAd(Ad ad, String email);
 
-    Ad updateAd(Long id, Ad updatedAd);
+    Ad updateAd(Long id, Ad updatedAd, String email);
 
-    void deleteAd(Long id);
+    void deleteAd(Long id, String email);
 }

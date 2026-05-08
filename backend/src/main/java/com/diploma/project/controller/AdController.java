@@ -3,6 +3,7 @@ package com.diploma.project.controller;
 import com.diploma.project.model.entity.Ad;
 import com.diploma.project.service.AdService;
 import java.util.List;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,13 +34,16 @@ public class AdController {
     }
 
     @PostMapping
-    public ResponseEntity<Ad> createAd(@RequestBody Ad ad) {
-        return ResponseEntity.status(201).body(adService.createAd(ad));
+    public ResponseEntity<Ad> createAd(@RequestBody Ad ad, Authentication authentication) {
+        String email = authentication.getName();
+        return ResponseEntity.status(201).body(adService.createAd(ad, email));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Ad> updateAd(@PathVariable Long id, @RequestBody Ad updatedAd) {
-        Ad ad = adService.updateAd(id, updatedAd);
+    public ResponseEntity<Ad> updateAd(
+            @PathVariable Long id, @RequestBody Ad updatedAd, Authentication authentication) {
+        String email = authentication.getName();
+        Ad ad = adService.updateAd(id, updatedAd, email);
         if (ad == null) {
             return ResponseEntity.notFound().build();
         }
@@ -47,8 +51,9 @@ public class AdController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAd(@PathVariable Long id) {
-        adService.deleteAd(id);
+    public ResponseEntity<Void> deleteAd(@PathVariable Long id, Authentication authentication) {
+        String email = authentication.getName();
+        adService.deleteAd(id, email);
         return ResponseEntity.noContent().build();
     }
 }
