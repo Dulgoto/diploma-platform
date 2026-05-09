@@ -1,13 +1,17 @@
 package com.diploma.project.service.impl;
 
 import com.diploma.project.model.entity.Ad;
+import com.diploma.project.model.entity.AdType;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdService;
-import org.springframework.stereotype.Service;
-
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import java.util.List;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
 
 @Service
 public class AdServiceImpl implements AdService {
@@ -28,6 +32,64 @@ public class AdServiceImpl implements AdService {
     @Override
     public List<Ad> getMyAds(String email) {
         return adRepository.findByOwnerEmail(email);
+    }
+
+    @Override
+    public List<Ad> searchAds(
+            String keyword,
+            String category,
+            AdType type,
+            String location,
+            Double minPrice,
+            Double maxPrice,
+            String sort) {
+        Specification<Ad> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (keyword != null && !keyword.isBlank()) {
+                String pattern = "%" + keyword.toLowerCase().trim() + "%";
+                predicates.add(
+                        cb.or(
+                                cb.like(cb.lower(root.get("title")), pattern),
+                                cb.like(cb.lower(root.get("description")), pattern),
+                                cb.like(cb.lower(root.get("keywords")), pattern)));
+            }
+            if (category != null && !category.isBlank()) {
+                predicates.add(cb.equal(cb.lower(root.get("category")), category.toLowerCase().trim()));
+            }
+            if (location != null && !location.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("location")), "%" + location.toLowerCase().trim() + "%"));
+            }
+            if (type != null) {
+                predicates.add(cb.equal(root.get("type"), type));
+            }
+            if (minPrice != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("price"), minPrice));
+            }
+            if (maxPrice != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+            }
+
+            if (predicates.isEmpty()) {
+                return cb.conjunction();
+            }
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+
+        Sort order = resolveSort(sort);
+        return adRepository.findAll(spec, order);
+    }
+
+    private static Sort resolveSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+        return switch (sort) {
+            case "priceAsc" -> Sort.by(Sort.Direction.ASC, "price");
+            case "priceDesc" -> Sort.by(Sort.Direction.DESC, "price");
+            case "newest" -> Sort.by(Sort.Direction.DESC, "createdAt");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
     }
 
     @Override
