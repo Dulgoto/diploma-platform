@@ -25,6 +25,7 @@ public class Ad {
     private Double price;
     private Double latitude;
     private Double longitude;
+    private String location;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

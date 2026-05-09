@@ -1,6 +1,7 @@
 package com.diploma.project.service.impl;
 
 import com.diploma.project.model.entity.Ad;
+import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdService;
@@ -25,13 +26,20 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
+    public List<Ad> getMyAds(String email) {
+        return adRepository.findByOwnerEmail(email);
+    }
+
+    @Override
     public Ad getAdById(Long id) {
         return adRepository.findById(id).orElse(null);
     }
 
     @Override
     public Ad createAd(Ad ad, String email) {
-        ad.setOwner(userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found")));
+        User owner = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        ad.setOwner(owner);
+        ad.setLocation(owner.getLocation());
         return adRepository.save(ad);
     }
 
@@ -46,8 +54,6 @@ public class AdServiceImpl implements AdService {
                     existing.setTitle(updatedAd.getTitle());
                     existing.setDescription(updatedAd.getDescription());
                     existing.setPrice(updatedAd.getPrice());
-                    existing.setLatitude(updatedAd.getLatitude());
-                    existing.setLongitude(updatedAd.getLongitude());
                     existing.setType(updatedAd.getType());
                     existing.setCategory(updatedAd.getCategory());
                     existing.setKeywords(updatedAd.getKeywords());

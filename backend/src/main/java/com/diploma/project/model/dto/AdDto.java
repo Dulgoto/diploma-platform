@@ -11,6 +11,7 @@ public class AdDto {
     private Double price;
     private Double latitude;
     private Double longitude;
+    private String location;
     private AdType type;
     private String category;
     private String keywords;
@@ -88,6 +89,14 @@ public class AdDto {
 
     public void setLongitude(Double longitude) {
         this.longitude = longitude;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 
     public AdType getType() {

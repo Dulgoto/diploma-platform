@@ -28,7 +28,13 @@ public class AdController {
         return ResponseEntity.ok(adService.getAllAds());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/myAds")
+    public ResponseEntity<List<Ad>> getMyAds(Authentication authentication) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(adService.getMyAds(email));
+    }
+
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<Ad> getAdById(@PathVariable Long id) {
         return ResponseEntity.ok(adService.getAdById(id));
     }

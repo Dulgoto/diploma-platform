@@ -7,6 +7,8 @@ public interface AdService {
 
     List<Ad> getAllAds();
 
+    List<Ad> getMyAds(String email);
+
     Ad getAdById(Long id);
 
     Ad createAd(Ad ad, String email);
