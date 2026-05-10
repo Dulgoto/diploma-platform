@@ -64,11 +64,7 @@ public class AdController {
     public ResponseEntity<Ad> updateAd(
             @PathVariable Long id, @RequestBody Ad updatedAd, Authentication authentication) {
         String email = authentication.getName();
-        Ad ad = adService.updateAd(id, updatedAd, email);
-        if (ad == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(ad);
+        return ResponseEntity.ok(adService.updateAd(id, updatedAd, email));
     }
 
     @DeleteMapping("/{id}")

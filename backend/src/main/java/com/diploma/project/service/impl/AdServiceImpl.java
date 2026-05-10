@@ -1,5 +1,7 @@
 package com.diploma.project.service.impl;
 
+import com.diploma.project.exception.ForbiddenException;
+import com.diploma.project.exception.NotFoundException;
 import com.diploma.project.model.entity.Ad;
 import com.diploma.project.model.entity.AdType;
 import com.diploma.project.model.entity.User;
@@ -94,12 +96,13 @@ public class AdServiceImpl implements AdService {
 
     @Override
     public Ad getAdById(Long id) {
-        return adRepository.findById(id).orElse(null);
+        return adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
     }
 
     @Override
     public Ad createAd(Ad ad, String email) {
-        User owner = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        User owner =
+                userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         ad.setOwner(owner);
         ad.setLocation(owner.getLocation());
         return adRepository.save(ad);
@@ -107,28 +110,25 @@ public class AdServiceImpl implements AdService {
 
     @Override
     public Ad updateAd(Long id, Ad updatedAd, String email) {
-        return adRepository
-                .findById(id)
-                .map(existing -> {
-                    if (existing.getOwner() == null || !existing.getOwner().getEmail().equals(email)) {
-                        throw new RuntimeException("You are not the owner of this ad");
-                    }
-                    existing.setTitle(updatedAd.getTitle());
-                    existing.setDescription(updatedAd.getDescription());
-                    existing.setPrice(updatedAd.getPrice());
-                    existing.setType(updatedAd.getType());
-                    existing.setCategory(updatedAd.getCategory());
-                    existing.setKeywords(updatedAd.getKeywords());
-                    return adRepository.save(existing);
-                })
-                .orElse(null);
+        Ad existing =
+                adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
+        if (existing.getOwner() == null || !existing.getOwner().getEmail().equals(email)) {
+            throw new ForbiddenException("You are not the owner of this ad");
+        }
+        existing.setTitle(updatedAd.getTitle());
+        existing.setDescription(updatedAd.getDescription());
+        existing.setPrice(updatedAd.getPrice());
+        existing.setType(updatedAd.getType());
+        existing.setCategory(updatedAd.getCategory());
+        existing.setKeywords(updatedAd.getKeywords());
+        return adRepository.save(existing);
     }
 
     @Override
     public void deleteAd(Long id, String email) {
-        Ad ad = adRepository.findById(id).orElseThrow(() -> new RuntimeException("Ad not found"));
+        Ad ad = adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
         if (ad.getOwner() == null || !ad.getOwner().getEmail().equals(email)) {
-            throw new RuntimeException("You are not the owner of this ad");
+            throw new ForbiddenException("You are not the owner of this ad");
         }
         adRepository.delete(ad);
     }
