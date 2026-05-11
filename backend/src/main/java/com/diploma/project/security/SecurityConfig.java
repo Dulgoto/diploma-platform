@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .authenticated()
                         .requestMatchers("/api/notifications/**")
                         .authenticated()
+                        .requestMatchers("/api/messages/**")
+                        .authenticated()
                         .anyRequest()
                         .permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
