@@ -8,6 +8,7 @@ import com.diploma.project.model.entity.Review;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.ReviewRepository;
 import com.diploma.project.repository.UserRepository;
+import com.diploma.project.service.NotificationService;
 import com.diploma.project.service.ReviewService;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -19,10 +20,15 @@ public class ReviewServiceImpl implements ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public ReviewServiceImpl(ReviewRepository reviewRepository, UserRepository userRepository) {
+    public ReviewServiceImpl(
+            ReviewRepository reviewRepository,
+            UserRepository userRepository,
+            NotificationService notificationService) {
         this.reviewRepository = reviewRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -50,6 +56,10 @@ public class ReviewServiceImpl implements ReviewService {
         review.setComment(request.getComment());
         Review saved = reviewRepository.save(review);
         recalculateAverageRating(reviewedUser);
+        notificationService.createNotification(
+                reviewedUser.getId(),
+                "New review received",
+                reviewer.getName() + " left you a new review.");
         return toReviewDto(saved);
     }
 
@@ -57,14 +67,18 @@ public class ReviewServiceImpl implements ReviewService {
     @Transactional
     public ReviewDto updateReview(Long reviewedUserId, String reviewerEmail, ReviewRequest request) {
         validateRating(request.getRating());
-        Review review =
+        Review existing =
                 reviewRepository
                         .findByReviewer_EmailAndReviewedUser_Id(reviewerEmail, reviewedUserId)
                         .orElseThrow(() -> new NotFoundException("Review not found"));
-        review.setRating(request.getRating());
-        review.setComment(request.getComment());
-        Review saved = reviewRepository.save(review);
-        recalculateAverageRating(review.getReviewedUser());
+        existing.setRating(request.getRating());
+        existing.setComment(request.getComment());
+        Review saved = reviewRepository.save(existing);
+        recalculateAverageRating(existing.getReviewedUser());
+        notificationService.createNotification(
+                existing.getReviewedUser().getId(),
+                "Review updated",
+                existing.getReviewer().getName() + " updated their review.");
         return toReviewDto(saved);
     }
 

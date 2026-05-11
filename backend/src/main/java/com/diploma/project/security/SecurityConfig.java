@@ -48,6 +48,8 @@ public class SecurityConfig {
                         .authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/reviews/**")
                         .authenticated()
+                        .requestMatchers("/api/notifications/**")
+                        .authenticated()
                         .anyRequest()
                         .permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
