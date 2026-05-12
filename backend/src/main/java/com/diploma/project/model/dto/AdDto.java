@@ -1,8 +1,8 @@
 package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.AdType;
-
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class AdDto {
 
@@ -19,6 +19,7 @@ public class AdDto {
     private Long ownerId;
     private String ownerName;
     private LocalDateTime createdAt;
+    private List<AdImageDto> images;
 
     public AdDto() {
     }
@@ -147,5 +148,13 @@ public class AdDto {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<AdImageDto> getImages() {
+        return images;
+    }
+
+    public void setImages(List<AdImageDto> images) {
+        this.images = images;
     }
 }

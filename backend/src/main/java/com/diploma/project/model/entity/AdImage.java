@@ -3,47 +3,35 @@ package com.diploma.project.model.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "ads")
+@Table(name = "ad_images")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Ad {
+public class AdImage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String title;
-    private String description;
-    private Double price;
-    private Double latitude;
-    private Double longitude;
-    private String location;
+    @Column(nullable = false)
+    private String imageKey;
+
+    private String originalFileName;
 
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private AdType type;
-
-    private String category;
-    private String keywords;
+    private Integer orderIndex;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
-    private User owner;
-
-    @JsonIgnore
-    @OneToMany(mappedBy = "ad", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<AdImage> images = new ArrayList<>();
+    @JoinColumn(name = "ad_id", nullable = false)
+    private Ad ad;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -51,5 +39,8 @@ public class Ad {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.orderIndex == null) {
+            this.orderIndex = 0;
+        }
     }
 }
