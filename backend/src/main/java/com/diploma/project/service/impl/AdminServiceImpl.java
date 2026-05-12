@@ -3,9 +3,11 @@ package com.diploma.project.service.impl;
 import com.diploma.project.exception.ForbiddenException;
 import com.diploma.project.exception.NotFoundException;
 import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.AdImageDto;
 import com.diploma.project.model.dto.ReviewDto;
 import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.model.entity.Ad;
+import com.diploma.project.model.entity.AdImage;
 import com.diploma.project.model.entity.Review;
 import com.diploma.project.model.entity.Role;
 import com.diploma.project.model.entity.User;
@@ -13,6 +15,7 @@ import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.ReviewRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdminService;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -142,6 +145,24 @@ public class AdminServiceImpl implements AdminService {
         if (ad.getOwner() != null) {
             dto.setOwnerId(ad.getOwner().getId());
             dto.setOwnerName(ad.getOwner().getName());
+        }
+        List<AdImage> images = ad.getImages();
+        if (images != null) {
+            dto.setImages(
+                    images.stream()
+                            .sorted(
+                                    Comparator.comparing(
+                                            AdImage::getOrderIndex,
+                                            Comparator.nullsLast(Comparator.naturalOrder())))
+                            .map(
+                                    img -> new AdImageDto(
+                                            img.getId(),
+                                            img.getImageKey(),
+                                            img.getOriginalFileName(),
+                                            img.getOrderIndex()))
+                            .toList());
+        } else {
+            dto.setImages(List.of());
         }
         return dto;
     }

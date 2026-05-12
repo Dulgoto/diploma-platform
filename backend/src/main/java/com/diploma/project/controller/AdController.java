@@ -1,11 +1,13 @@
 package com.diploma.project.controller;
 
-import com.diploma.project.model.entity.Ad;
+import com.diploma.project.model.dto.AdCreateRequest;
+import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.AdType;
 import com.diploma.project.service.AdService;
 import java.util.List;
-import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,18 +28,18 @@ public class AdController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Ad>> getAllAds() {
+    public ResponseEntity<List<AdDto>> getAllAds() {
         return ResponseEntity.ok(adService.getAllAds());
     }
 
     @GetMapping("/myAds")
-    public ResponseEntity<List<Ad>> getMyAds(Authentication authentication) {
+    public ResponseEntity<List<AdDto>> getMyAds(Authentication authentication) {
         String email = authentication.getName();
         return ResponseEntity.ok(adService.getMyAds(email));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Ad>> searchAds(
+    public ResponseEntity<List<AdDto>> searchAds(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) AdType type,
@@ -50,21 +52,24 @@ public class AdController {
     }
 
     @GetMapping("/{id:\\d+}")
-    public ResponseEntity<Ad> getAdById(@PathVariable Long id) {
+    public ResponseEntity<AdDto> getAdById(@PathVariable Long id) {
         return ResponseEntity.ok(adService.getAdById(id));
     }
 
     @PostMapping
-    public ResponseEntity<Ad> createAd(@RequestBody Ad ad, Authentication authentication) {
+    public ResponseEntity<AdDto> createAd(
+            @RequestBody AdCreateRequest request, Authentication authentication) {
         String email = authentication.getName();
-        return ResponseEntity.status(201).body(adService.createAd(ad, email));
+        return ResponseEntity.status(201).body(adService.createAd(request, email));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Ad> updateAd(
-            @PathVariable Long id, @RequestBody Ad updatedAd, Authentication authentication) {
+    public ResponseEntity<AdDto> updateAd(
+            @PathVariable Long id,
+            @RequestBody AdUpdateRequest request,
+            Authentication authentication) {
         String email = authentication.getName();
-        return ResponseEntity.ok(adService.updateAd(id, updatedAd, email));
+        return ResponseEntity.ok(adService.updateAd(id, request, email));
     }
 
     @DeleteMapping("/{id}")

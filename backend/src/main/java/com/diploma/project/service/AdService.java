@@ -1,16 +1,18 @@
 package com.diploma.project.service;
 
-import com.diploma.project.model.entity.Ad;
+import com.diploma.project.model.dto.AdCreateRequest;
+import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.AdType;
 import java.util.List;
 
 public interface AdService {
 
-    List<Ad> getAllAds();
+    List<AdDto> getAllAds();
 
-    List<Ad> getMyAds(String email);
+    List<AdDto> getMyAds(String email);
 
-    List<Ad> searchAds(
+    List<AdDto> searchAds(
             String keyword,
             String category,
             AdType type,
@@ -19,11 +21,11 @@ public interface AdService {
             Double maxPrice,
             String sort);
 
-    Ad getAdById(Long id);
+    AdDto getAdById(Long id);
 
-    Ad createAd(Ad ad, String email);
+    AdDto createAd(AdCreateRequest request, String email);
 
-    Ad updateAd(Long id, Ad updatedAd, String email);
+    AdDto updateAd(Long id, AdUpdateRequest request, String email);
 
     void deleteAd(Long id, String email);
 }

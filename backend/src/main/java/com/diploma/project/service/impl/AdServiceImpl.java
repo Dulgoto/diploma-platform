@@ -1,8 +1,14 @@
 package com.diploma.project.service.impl;
 
+import com.diploma.project.exception.BadRequestException;
 import com.diploma.project.exception.ForbiddenException;
 import com.diploma.project.exception.NotFoundException;
+import com.diploma.project.model.dto.AdCreateRequest;
+import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.AdImageDto;
+import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.Ad;
+import com.diploma.project.model.entity.AdImage;
 import com.diploma.project.model.entity.AdType;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.AdRepository;
@@ -10,13 +16,18 @@ import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdService;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class AdServiceImpl implements AdService {
+
+    private static final int MAX_IMAGES_PER_AD = 10;
 
     private final AdRepository adRepository;
     private final UserRepository userRepository;
@@ -27,17 +38,19 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
-    public List<Ad> getAllAds() {
-        return adRepository.findAll();
+    public List<AdDto> getAllAds() {
+        return adRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+                .map(AdServiceImpl::toAdDto)
+                .toList();
     }
 
     @Override
-    public List<Ad> getMyAds(String email) {
-        return adRepository.findByOwnerEmail(email);
+    public List<AdDto> getMyAds(String email) {
+        return adRepository.findByOwnerEmail(email).stream().map(AdServiceImpl::toAdDto).toList();
     }
 
     @Override
-    public List<Ad> searchAds(
+    public List<AdDto> searchAds(
             String keyword,
             String category,
             AdType type,
@@ -79,7 +92,7 @@ public class AdServiceImpl implements AdService {
         };
 
         Sort order = resolveSort(sort);
-        return adRepository.findAll(spec, order);
+        return adRepository.findAll(spec, order).stream().map(AdServiceImpl::toAdDto).toList();
     }
 
     private static Sort resolveSort(String sort) {
@@ -95,43 +108,124 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
-    public Ad getAdById(Long id) {
-        return adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
+    public AdDto getAdById(Long id) {
+        Ad ad = adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
+        return toAdDto(ad);
     }
 
     @Override
-    public Ad createAd(Ad ad, String email) {
+    @Transactional
+    public AdDto createAd(AdCreateRequest request, String email) {
+        validateImageKeys(request.getImageKeys());
         User owner =
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+        Ad ad = new Ad();
+        ad.setTitle(request.getTitle());
+        ad.setDescription(request.getDescription());
+        ad.setPrice(request.getPrice());
+        ad.setType(request.getType());
+        ad.setCategory(request.getCategory());
+        ad.setKeywords(request.getKeywords());
         ad.setOwner(owner);
         ad.setLocation(owner.getLocation());
         ad.setLatitude(owner.getLatitude());
         ad.setLongitude(owner.getLongitude());
-        return adRepository.save(ad);
+        replaceImages(ad, request.getImageKeys());
+        Ad saved = adRepository.save(ad);
+        return toAdDto(saved);
     }
 
     @Override
-    public Ad updateAd(Long id, Ad updatedAd, String email) {
+    @Transactional
+    public AdDto updateAd(Long id, AdUpdateRequest request, String email) {
+        validateImageKeys(request.getImageKeys());
         Ad existing =
                 adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
         if (existing.getOwner() == null || !existing.getOwner().getEmail().equals(email)) {
             throw new ForbiddenException("You are not the owner of this ad");
         }
-        existing.setTitle(updatedAd.getTitle());
-        existing.setDescription(updatedAd.getDescription());
-        existing.setPrice(updatedAd.getPrice());
-        existing.setType(updatedAd.getType());
-        existing.setCategory(updatedAd.getCategory());
-        existing.setKeywords(updatedAd.getKeywords());
-        return adRepository.save(existing);
+        existing.setTitle(request.getTitle());
+        existing.setDescription(request.getDescription());
+        existing.setPrice(request.getPrice());
+        existing.setType(request.getType());
+        existing.setCategory(request.getCategory());
+        existing.setKeywords(request.getKeywords());
+        replaceImages(existing, request.getImageKeys());
+        Ad saved = adRepository.save(existing);
+        return toAdDto(saved);
     }
 
     @Override
+    @Transactional
     public void deleteAd(Long id, String email) {
         Ad ad = adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
         if (ad.getOwner() == null || !ad.getOwner().getEmail().equals(email)) {
             throw new ForbiddenException("You are not the owner of this ad");
         }
         adRepository.delete(ad);
+    }
+
+    private static void validateImageKeys(List<String> imageKeys) {
+        if (imageKeys == null || imageKeys.isEmpty()) {
+            throw new BadRequestException("At least one image is required");
+        }
+        if (imageKeys.size() > MAX_IMAGES_PER_AD) {
+            throw new BadRequestException("Maximum 10 images are allowed");
+        }
+        for (String key : imageKeys) {
+            if (key == null || key.isBlank()) {
+                throw new BadRequestException("Image key cannot be blank");
+            }
+        }
+    }
+
+    private static void replaceImages(Ad ad, List<String> imageKeys) {
+        ad.getImages().clear();
+        for (int i = 0; i < imageKeys.size(); i++) {
+            AdImage image = new AdImage();
+            image.setImageKey(imageKeys.get(i));
+            image.setOriginalFileName(null);
+            image.setOrderIndex(i);
+            image.setAd(ad);
+            ad.getImages().add(image);
+        }
+    }
+
+    private static AdDto toAdDto(Ad ad) {
+        AdDto dto = new AdDto();
+        dto.setId(ad.getId());
+        dto.setTitle(ad.getTitle());
+        dto.setDescription(ad.getDescription());
+        dto.setPrice(ad.getPrice());
+        dto.setLatitude(ad.getLatitude());
+        dto.setLongitude(ad.getLongitude());
+        dto.setLocation(ad.getLocation());
+        dto.setType(ad.getType());
+        dto.setCategory(ad.getCategory());
+        dto.setKeywords(ad.getKeywords());
+        dto.setCreatedAt(ad.getCreatedAt());
+        if (ad.getOwner() != null) {
+            dto.setOwnerId(ad.getOwner().getId());
+            dto.setOwnerName(ad.getOwner().getName());
+        }
+        List<AdImage> images = ad.getImages();
+        if (images != null) {
+            dto.setImages(
+                    images.stream()
+                            .sorted(
+                                    Comparator.comparing(
+                                            AdImage::getOrderIndex,
+                                            Comparator.nullsLast(Comparator.naturalOrder())))
+                            .map(
+                                    img -> new AdImageDto(
+                                            img.getId(),
+                                            img.getImageKey(),
+                                            img.getOriginalFileName(),
+                                            img.getOrderIndex()))
+                            .toList());
+        } else {
+            dto.setImages(List.of());
+        }
+        return dto;
     }
 }
