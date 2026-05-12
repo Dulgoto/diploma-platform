@@ -1,6 +1,7 @@
 package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.AdType;
+
 import java.time.LocalDateTime;
 
 public class AdDto {
@@ -19,7 +20,8 @@ public class AdDto {
     private String ownerName;
     private LocalDateTime createdAt;
 
-    public AdDto() {}
+    public AdDto() {
+    }
 
     public AdDto(String title, String description, Double price, Double latitude, Double longitude) {
         this.title = title;
@@ -30,7 +32,7 @@ public class AdDto {
     }
 
     public AdDto(String title, String description, Double price, Double latitude, Double longitude,
-            AdType type, String category, String keywords, Long ownerId, String ownerName) {
+                 AdType type, String category, String keywords, Long ownerId, String ownerName) {
         this.title = title;
         this.description = description;
         this.price = price;
@@ -44,11 +46,11 @@ public class AdDto {
     }
 
     public Long getId() {
-    return id;
+        return id;
     }
 
     public void setId(Long id) {
-    this.id = id;
+        this.id = id;
     }
 
     public String getTitle() {
@@ -138,12 +140,12 @@ public class AdDto {
     public void setOwnerName(String ownerName) {
         this.ownerName = ownerName;
     }
-       
-        public LocalDateTime getCreatedAt() {
-    return createdAt;
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {
-    this.createdAt = createdAt;
+        this.createdAt = createdAt;
     }
 }

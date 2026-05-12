@@ -31,6 +31,8 @@ public class UserServiceImpl implements UserService {
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         user.setName(request.getName());
         user.setLocation(request.getLocation());
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
         user.setDescription(request.getDescription());
         user.setAvatarKey(request.getAvatarKey());
         User saved = userRepository.save(user);
@@ -49,6 +51,8 @@ public class UserServiceImpl implements UserService {
                 user.getEmail(),
                 user.getName(),
                 user.getLocation(),
+                user.getLatitude(),
+                user.getLongitude(),
                 user.getDescription(),
                 user.getAverageRating(),
                 user.getAvatarKey(),
@@ -61,6 +65,8 @@ public class UserServiceImpl implements UserService {
                 user.getId(),
                 user.getName(),
                 user.getLocation(),
+                user.getLatitude(),
+                user.getLongitude(),
                 user.getDescription(),
                 user.getAverageRating(),
                 user.getAvatarKey());

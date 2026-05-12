@@ -105,6 +105,8 @@ public class AdServiceImpl implements AdService {
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         ad.setOwner(owner);
         ad.setLocation(owner.getLocation());
+        ad.setLatitude(owner.getLatitude());
+        ad.setLongitude(owner.getLongitude());
         return adRepository.save(ad);
     }
 

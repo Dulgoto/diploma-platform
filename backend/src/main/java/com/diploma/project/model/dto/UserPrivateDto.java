@@ -9,6 +9,8 @@ public class UserPrivateDto {
     private String email;
     private String name;
     private String location;
+    private Double latitude;
+    private Double longitude;
     private String description;
     private Double averageRating;
     private String avatarKey;
@@ -17,12 +19,15 @@ public class UserPrivateDto {
 
     public UserPrivateDto() {}
 
-    public UserPrivateDto(Long id, String email, String name, String location, String description,
-            Double averageRating, String avatarKey, Role role, LocalDateTime createdAt) {
+    public UserPrivateDto(Long id, String email, String name, String location, Double latitude,
+            Double longitude, String description, Double averageRating, String avatarKey, Role role,
+            LocalDateTime createdAt) {
         this.id = id;
         this.email = email;
         this.name = name;
         this.location = location;
+        this.latitude = latitude;
+        this.longitude = longitude;
         this.description = description;
         this.averageRating = averageRating;
         this.avatarKey = avatarKey;
@@ -60,6 +65,22 @@ public class UserPrivateDto {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 
     public String getDescription() {

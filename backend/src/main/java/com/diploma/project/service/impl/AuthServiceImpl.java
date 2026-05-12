@@ -40,6 +40,8 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setName(request.getName());
         user.setLocation(request.getLocation());
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
         user.setDescription(request.getDescription());
         user.setAvatarKey(request.getAvatarKey());
         User saved = userRepository.save(user);
@@ -64,6 +66,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getName(),
                 user.getLocation(),
+                user.getLatitude(),
+                user.getLongitude(),
                 user.getDescription(),
                 user.getAverageRating(),
                 user.getAvatarKey(),
