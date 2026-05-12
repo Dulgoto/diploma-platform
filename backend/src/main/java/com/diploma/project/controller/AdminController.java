@@ -1,10 +1,12 @@
 package com.diploma.project.controller;
 
+import com.diploma.project.model.dto.AdDto;
 import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.service.AdminService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -39,5 +41,18 @@ public class AdminController {
             @PathVariable Long id, Authentication authentication) {
         String adminEmail = authentication.getName();
         return ResponseEntity.ok(adminService.unbanUser(id, adminEmail));
+    }
+
+    @GetMapping("/ads")
+    public ResponseEntity<List<AdDto>> getAllAds(Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(adminService.getAllAds(adminEmail));
+    }
+
+    @DeleteMapping("/ads/{id}")
+    public ResponseEntity<Void> deleteAd(@PathVariable Long id, Authentication authentication) {
+        String adminEmail = authentication.getName();
+        adminService.deleteAd(id, adminEmail);
+        return ResponseEntity.noContent().build();
     }
 }
