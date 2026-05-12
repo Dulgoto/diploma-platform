@@ -56,6 +56,9 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new UnauthorizedException("Invalid email or password");
         }
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new UnauthorizedException("User account is blocked");
+        }
         String token = jwtService.generateToken(user.getEmail());
         return new AuthResponse(token, user.getEmail(), user.getRole());
     }
@@ -72,6 +75,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getAverageRating(),
                 user.getAvatarKey(),
                 user.getRole(),
+                user.getActive(),
                 user.getCreatedAt());
     }
 }

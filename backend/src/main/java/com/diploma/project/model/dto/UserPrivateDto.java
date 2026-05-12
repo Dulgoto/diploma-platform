@@ -15,13 +15,14 @@ public class UserPrivateDto {
     private Double averageRating;
     private String avatarKey;
     private Role role;
+    private Boolean active;
     private LocalDateTime createdAt;
 
     public UserPrivateDto() {}
 
     public UserPrivateDto(Long id, String email, String name, String location, Double latitude,
             Double longitude, String description, Double averageRating, String avatarKey, Role role,
-            LocalDateTime createdAt) {
+            Boolean active, LocalDateTime createdAt) {
         this.id = id;
         this.email = email;
         this.name = name;
@@ -32,6 +33,7 @@ public class UserPrivateDto {
         this.averageRating = averageRating;
         this.avatarKey = avatarKey;
         this.role = role;
+        this.active = active;
         this.createdAt = createdAt;
     }
 
@@ -113,6 +115,14 @@ public class UserPrivateDto {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     public LocalDateTime getCreatedAt() {

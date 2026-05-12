@@ -38,6 +38,8 @@ public class SecurityConfig {
                         .authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/users/account")
                         .authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/account")
+                        .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/*")
                         .permitAll()
                         .requestMatchers("/api/favorites/**")

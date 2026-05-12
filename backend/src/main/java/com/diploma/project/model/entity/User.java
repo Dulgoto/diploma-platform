@@ -51,6 +51,9 @@ public class User {
     private Role role = Role.USER;
 
     @Column(nullable = false)
+    private Boolean active = true;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -61,6 +64,9 @@ public class User {
         }
         if (this.role == null) {
             this.role = Role.USER;
+        }
+        if (this.active == null) {
+            this.active = true;
         }
     }
 }

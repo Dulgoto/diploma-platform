@@ -10,5 +10,7 @@ public interface UserService {
 
     UserPrivateDto updateAccount(String email, UserUpdateRequest request);
 
+    void deactivateAccount(String email);
+
     UserPublicDto getPublicProfile(Long id);
 }

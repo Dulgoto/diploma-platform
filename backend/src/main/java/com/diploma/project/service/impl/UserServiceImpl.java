@@ -40,6 +40,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void deactivateAccount(String email) {
+        User user =
+                userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+        user.setActive(false);
+        userRepository.save(user);
+    }
+
+    @Override
     public UserPublicDto getPublicProfile(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
         return toPublicDto(user);
@@ -57,6 +65,7 @@ public class UserServiceImpl implements UserService {
                 user.getAverageRating(),
                 user.getAvatarKey(),
                 user.getRole(),
+                user.getActive(),
                 user.getCreatedAt());
     }
 
