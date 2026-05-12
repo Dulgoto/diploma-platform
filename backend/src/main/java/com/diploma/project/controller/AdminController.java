@@ -1,6 +1,7 @@
 package com.diploma.project.controller;
 
 import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.ReviewDto;
 import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.service.AdminService;
 import java.util.List;
@@ -53,6 +54,19 @@ public class AdminController {
     public ResponseEntity<Void> deleteAd(@PathVariable Long id, Authentication authentication) {
         String adminEmail = authentication.getName();
         adminService.deleteAd(id, adminEmail);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/reviews")
+    public ResponseEntity<List<ReviewDto>> getAllReviews(Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(adminService.getAllReviews(adminEmail));
+    }
+
+    @DeleteMapping("/reviews/{id}")
+    public ResponseEntity<Void> deleteReview(@PathVariable Long id, Authentication authentication) {
+        String adminEmail = authentication.getName();
+        adminService.deleteReview(id, adminEmail);
         return ResponseEntity.noContent().build();
     }
 }
