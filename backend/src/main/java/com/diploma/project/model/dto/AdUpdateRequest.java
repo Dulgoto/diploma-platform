@@ -1,14 +1,21 @@
 package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.AdType;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.util.List;
 
 public class AdUpdateRequest {
 
+    @NotBlank
     private String title;
     private String description;
+    @NotNull
+    @PositiveOrZero
     private Double price;
+    @NotNull
     private AdType type;
     private String category;
     private String keywords;
