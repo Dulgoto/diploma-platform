@@ -3,6 +3,7 @@ package com.diploma.project.service;
 import com.diploma.project.model.dto.AdDto;
 import com.diploma.project.model.dto.ReviewDto;
 import com.diploma.project.model.dto.UserPrivateDto;
+
 import java.util.List;
 
 public interface AdminService {

@@ -3,16 +3,20 @@ package com.diploma.project.service.impl;
 import com.diploma.project.exception.BadRequestException;
 import com.diploma.project.exception.NotFoundException;
 import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.AdImageDto;
 import com.diploma.project.model.entity.Ad;
+import com.diploma.project.model.entity.AdImage;
 import com.diploma.project.model.entity.Favorite;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.FavoriteRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.FavoriteService;
-import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -87,6 +91,24 @@ public class FavoriteServiceImpl implements FavoriteService {
             dto.setOwnerName(ad.getOwner().getName());
         }
         dto.setCreatedAt(ad.getCreatedAt());
+        List<AdImage> images = ad.getImages();
+        if (images != null) {
+            dto.setImages(
+                    images.stream()
+                            .sorted(
+                                    Comparator.comparing(
+                                            AdImage::getOrderIndex,
+                                            Comparator.nullsLast(Comparator.naturalOrder())))
+                            .map(
+                                    img -> new AdImageDto(
+                                            img.getId(),
+                                            img.getImageKey(),
+                                            img.getOriginalFileName(),
+                                            img.getOrderIndex()))
+                            .toList());
+        } else {
+            dto.setImages(List.of());
+        }
         return dto;
     }
 }

@@ -1,6 +1,7 @@
 package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.Role;
+
 import java.time.LocalDateTime;
 
 public class UserPrivateDto {
@@ -18,11 +19,12 @@ public class UserPrivateDto {
     private Boolean active;
     private LocalDateTime createdAt;
 
-    public UserPrivateDto() {}
+    public UserPrivateDto() {
+    }
 
     public UserPrivateDto(Long id, String email, String name, String location, Double latitude,
-            Double longitude, String description, Double averageRating, String avatarKey, Role role,
-            Boolean active, LocalDateTime createdAt) {
+                          Double longitude, String description, Double averageRating, String avatarKey, Role role,
+                          Boolean active, LocalDateTime createdAt) {
         this.id = id;
         this.email = email;
         this.name = name;

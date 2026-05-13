@@ -11,10 +11,11 @@ public class UserPublicDto {
     private Double averageRating;
     private String avatarKey;
 
-    public UserPublicDto() {}
+    public UserPublicDto() {
+    }
 
     public UserPublicDto(Long id, String name, String location, Double latitude, Double longitude,
-            String description, Double averageRating, String avatarKey) {
+                         String description, Double averageRating, String avatarKey) {
         this.id = id;
         this.name = name;
         this.location = location;

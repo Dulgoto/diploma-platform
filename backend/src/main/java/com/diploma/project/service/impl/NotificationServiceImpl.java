@@ -7,9 +7,10 @@ import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.NotificationRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.NotificationService;
-import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)

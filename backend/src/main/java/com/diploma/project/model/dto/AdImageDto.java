@@ -7,7 +7,8 @@ public class AdImageDto {
     private String originalFileName;
     private Integer orderIndex;
 
-    public AdImageDto() {}
+    public AdImageDto() {
+    }
 
     public AdImageDto(Long id, String imageKey, String originalFileName, Integer orderIndex) {
         this.id = id;

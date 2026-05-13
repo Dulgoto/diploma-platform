@@ -10,7 +10,8 @@ public class NotificationDto {
     private Boolean readStatus;
     private LocalDateTime createdAt;
 
-    public NotificationDto() {}
+    public NotificationDto() {
+    }
 
     public NotificationDto(
             Long id, String title, String message, Boolean readStatus, LocalDateTime createdAt) {

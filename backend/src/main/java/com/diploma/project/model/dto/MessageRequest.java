@@ -7,7 +7,8 @@ public class MessageRequest {
     @NotBlank
     private String content;
 
-    public MessageRequest() {}
+    public MessageRequest() {
+    }
 
     public MessageRequest(String content) {
         this.content = content;

@@ -1,6 +1,7 @@
 package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.AdType;
+
 import java.util.List;
 
 public class AdUpdateRequest {
@@ -13,7 +14,8 @@ public class AdUpdateRequest {
     private String keywords;
     private List<String> imageKeys;
 
-    public AdUpdateRequest() {}
+    public AdUpdateRequest() {
+    }
 
     public AdUpdateRequest(
             String title,

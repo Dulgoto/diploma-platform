@@ -6,20 +6,17 @@ import com.diploma.project.model.dto.AdDto;
 import com.diploma.project.model.dto.AdImageDto;
 import com.diploma.project.model.dto.ReviewDto;
 import com.diploma.project.model.dto.UserPrivateDto;
-import com.diploma.project.model.entity.Ad;
-import com.diploma.project.model.entity.AdImage;
-import com.diploma.project.model.entity.Review;
-import com.diploma.project.model.entity.Role;
-import com.diploma.project.model.entity.User;
+import com.diploma.project.model.entity.*;
 import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.ReviewRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdminService;
-import java.util.Comparator;
-import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)

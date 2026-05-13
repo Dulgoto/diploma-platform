@@ -9,7 +9,8 @@ public class UserUpdateRequest {
     private String description;
     private String avatarKey;
 
-    public UserUpdateRequest() {}
+    public UserUpdateRequest() {
+    }
 
     public UserUpdateRequest(
             String name,

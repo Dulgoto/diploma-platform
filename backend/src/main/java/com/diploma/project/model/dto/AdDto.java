@@ -1,6 +1,7 @@
 package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.AdType;
+
 import java.time.LocalDateTime;
 import java.util.List;
 

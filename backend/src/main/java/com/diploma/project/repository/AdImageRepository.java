@@ -1,8 +1,9 @@
 package com.diploma.project.repository;
 
 import com.diploma.project.model.entity.AdImage;
-import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
 
 public interface AdImageRepository extends JpaRepository<AdImage, Long> {
 

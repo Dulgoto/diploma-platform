@@ -1,6 +1,7 @@
 package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.AdType;
+
 import java.util.List;
 
 public class AdCreateRequest {
@@ -13,7 +14,8 @@ public class AdCreateRequest {
     private String keywords;
     private List<String> imageKeys;
 
-    public AdCreateRequest() {}
+    public AdCreateRequest() {
+    }
 
     public AdCreateRequest(
             String title,

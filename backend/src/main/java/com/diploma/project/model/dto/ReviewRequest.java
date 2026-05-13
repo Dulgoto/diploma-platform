@@ -13,7 +13,8 @@ public class ReviewRequest {
 
     private String comment;
 
-    public ReviewRequest() {}
+    public ReviewRequest() {
+    }
 
     public ReviewRequest(Integer rating, String comment) {
         this.rating = rating;

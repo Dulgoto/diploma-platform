@@ -1,11 +1,11 @@
 package com.diploma.project.service.impl;
 
+import com.diploma.project.exception.BadRequestException;
+import com.diploma.project.exception.UnauthorizedException;
 import com.diploma.project.model.dto.AuthResponse;
 import com.diploma.project.model.dto.LoginRequest;
 import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.model.dto.UserRegisterRequest;
-import com.diploma.project.exception.BadRequestException;
-import com.diploma.project.exception.UnauthorizedException;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.security.JwtService;

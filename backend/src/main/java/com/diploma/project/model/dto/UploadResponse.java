@@ -5,7 +5,8 @@ public class UploadResponse {
     private String imageKey;
     private String originalFileName;
 
-    public UploadResponse() {}
+    public UploadResponse() {
+    }
 
     public UploadResponse(String imageKey, String originalFileName) {
         this.imageKey = imageKey;

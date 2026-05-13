@@ -15,13 +15,14 @@ import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdService;
 import jakarta.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)

@@ -10,7 +10,8 @@ public class ApiError {
     private String path;
     private LocalDateTime timestamp;
 
-    public ApiError() {}
+    public ApiError() {
+    }
 
     public ApiError(int status, String error, String message, String path, LocalDateTime timestamp) {
         this.status = status;

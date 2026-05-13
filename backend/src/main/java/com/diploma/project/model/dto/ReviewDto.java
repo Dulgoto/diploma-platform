@@ -14,7 +14,8 @@ public class ReviewDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public ReviewDto() {}
+    public ReviewDto() {
+    }
 
     public ReviewDto(
             Long id,

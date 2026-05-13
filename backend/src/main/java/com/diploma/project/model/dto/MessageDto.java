@@ -15,7 +15,8 @@ public class MessageDto {
     private Boolean readStatus;
     private LocalDateTime createdAt;
 
-    public MessageDto() {}
+    public MessageDto() {
+    }
 
     public MessageDto(
             Long id,

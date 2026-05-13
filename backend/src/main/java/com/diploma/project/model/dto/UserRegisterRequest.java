@@ -28,7 +28,8 @@ public class UserRegisterRequest {
     private String description;
     private String avatarKey;
 
-    public UserRegisterRequest() {}
+    public UserRegisterRequest() {
+    }
 
     public String getEmail() {
         return email;

@@ -4,6 +4,7 @@ import com.diploma.project.model.dto.AdCreateRequest;
 import com.diploma.project.model.dto.AdDto;
 import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.AdType;
+
 import java.util.List;
 
 public interface AdService {
