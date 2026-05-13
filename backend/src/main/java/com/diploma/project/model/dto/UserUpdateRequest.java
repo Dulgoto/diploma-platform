@@ -1,7 +1,10 @@
 package com.diploma.project.model.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class UserUpdateRequest {
 
+    @NotBlank
     private String name;
     private String location;
     private Double latitude;
