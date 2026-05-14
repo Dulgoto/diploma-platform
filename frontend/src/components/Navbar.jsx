@@ -29,6 +29,11 @@ export default function Navbar() {
           <NavLink to="/ads" className={linkClass}>
             Обяви
           </NavLink>
+          {isAuthenticated ? (
+            <NavLink to="/my-ads" className={linkClass}>
+              Моите обяви
+            </NavLink>
+          ) : null}
           <NavLink to="/post-ad" className={linkClass}>
             Публикувай
           </NavLink>

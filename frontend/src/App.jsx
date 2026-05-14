@@ -4,6 +4,8 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Home from "./pages/Home.jsx";
 import AdsList from "./pages/AdsList.jsx";
 import AdDetails from "./pages/AdDetails.jsx";
+import EditAd from "./pages/EditAd.jsx";
+import MyAds from "./pages/MyAds.jsx";
 import PostAd from "./pages/PostAd.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -16,7 +18,23 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/ads" element={<AdsList />} />
+          <Route
+            path="/ads/:id/edit"
+            element={
+              <ProtectedRoute>
+                <EditAd />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/ads/:id" element={<AdDetails />} />
+          <Route
+            path="/my-ads"
+            element={
+              <ProtectedRoute>
+                <MyAds />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/post-ad"
             element={
