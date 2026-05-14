@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { get } from "../api/apiClient.js";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { del, get, post } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const AD_TYPE_LABELS = {
   PRODUCT_SALE: "Продажба на стока",
@@ -18,12 +19,25 @@ function formatPriceEur(price) {
   return `${formatted} €`;
 }
 
+function errorMessage(err, fallback) {
+  const m = err?.body?.message;
+  return typeof m === "string" && m.trim() ? m : fallback;
+}
+
 export default function AdDetails() {
   const { id } = useParams();
+  const location = useLocation();
+  const { isAuthenticated, authLoading } = useAuth();
+
   const [ad, setAd] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favStatusLoading, setFavStatusLoading] = useState(false);
+  const [favMutating, setFavMutating] = useState(false);
+  const [favError, setFavError] = useState("");
 
   const sortedImages = useMemo(() => {
     if (!ad?.images?.length) {
@@ -35,6 +49,46 @@ export default function AdDetails() {
   useEffect(() => {
     setActiveIndex(0);
   }, [id]);
+
+  useEffect(() => {
+    setFavError("");
+    if (!ad?.id) {
+      setIsFavorite(false);
+      return undefined;
+    }
+    if (!isAuthenticated) {
+      setIsFavorite(false);
+      setFavStatusLoading(false);
+      return undefined;
+    }
+    if (authLoading) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    setFavStatusLoading(true);
+
+    get(`/api/favorites/${ad.id}/status`)
+      .then((flag) => {
+        if (!cancelled) {
+          setIsFavorite(Boolean(flag));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIsFavorite(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setFavStatusLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ad?.id, isAuthenticated, authLoading]);
 
   useEffect(() => {
     if (!id) {
@@ -169,23 +223,60 @@ export default function AdDetails() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-400"
-                title="Скоро"
-              >
-                Добави в любими
-              </button>
-              <button
-                type="button"
-                disabled
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-400"
-                title="Скоро"
-              >
-                Изпрати съобщение
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap gap-2">
+                {!isAuthenticated ? (
+                  <Link
+                    to="/login"
+                    state={{ from: location }}
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm hover:bg-emerald-100"
+                  >
+                    Влезте, за да добавите в любими
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={favMutating || favStatusLoading || !ad?.id}
+                    onClick={async () => {
+                      setFavError("");
+                      setFavMutating(true);
+                      try {
+                        if (isFavorite) {
+                          await del(`/api/favorites/${ad.id}`);
+                          setIsFavorite(false);
+                        } else {
+                          await post(`/api/favorites/${ad.id}`, {});
+                          setIsFavorite(true);
+                        }
+                      } catch (err) {
+                        setFavError(errorMessage(err, "Неуспешна операция с любими."));
+                      } finally {
+                        setFavMutating(false);
+                      }
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {favStatusLoading || favMutating
+                      ? "…"
+                      : isFavorite
+                        ? "♥ Премахни от любими"
+                        : "♡ Добави в любими"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-400"
+                  title="Скоро"
+                >
+                  Изпрати съобщение
+                </button>
+              </div>
+              {favError ? (
+                <p className="text-sm text-red-600" role="alert">
+                  {favError}
+                </p>
+              ) : null}
             </div>
           </div>
 

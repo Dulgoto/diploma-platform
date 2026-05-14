@@ -5,6 +5,7 @@ import Home from "./pages/Home.jsx";
 import AdsList from "./pages/AdsList.jsx";
 import AdDetails from "./pages/AdDetails.jsx";
 import EditAd from "./pages/EditAd.jsx";
+import Favorites from "./pages/Favorites.jsx";
 import MyAds from "./pages/MyAds.jsx";
 import PostAd from "./pages/PostAd.jsx";
 import Login from "./pages/Login.jsx";
@@ -32,6 +33,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <MyAds />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/favorites"
+            element={
+              <ProtectedRoute>
+                <Favorites />
               </ProtectedRoute>
             }
           />

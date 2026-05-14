@@ -39,14 +39,27 @@ export default function Navbar() {
           </NavLink>
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           {isAuthenticated ? (
             <>
-              {user?.name && (
-                <span className="hidden max-w-[8rem] truncate text-sm text-slate-500 md:inline">
-                  {user.name}
-                </span>
-              )}
+              <Link
+                to="/favorites"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rose-100 bg-rose-50 text-lg text-rose-600 shadow-sm transition hover:bg-rose-100 hover:text-rose-700"
+                title="Любими"
+                aria-label="Любими"
+              >
+                ♥
+              </Link>
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-600 shadow-sm"
+                title={user?.name || ""}
+                aria-hidden
+              >
+                {(user?.name && user.name.trim().charAt(0).toUpperCase()) || "?"}
+              </div>
+              {user?.name ? (
+                <span className="hidden max-w-[7rem] truncate text-sm text-slate-600 md:inline">{user.name}</span>
+              ) : null}
               <button
                 type="button"
                 onClick={logout}
