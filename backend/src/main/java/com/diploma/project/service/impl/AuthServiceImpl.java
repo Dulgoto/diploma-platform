@@ -10,6 +10,7 @@ import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.security.JwtService;
 import com.diploma.project.service.AuthService;
+import com.diploma.project.validation.AvatarKeyValidation;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
         user.setLatitude(request.getLatitude());
         user.setLongitude(request.getLongitude());
         user.setDescription(request.getDescription());
+        AvatarKeyValidation.validate(request.getAvatarKey());
         user.setAvatarKey(request.getAvatarKey());
         User saved = userRepository.save(user);
         return toPrivateDto(saved);

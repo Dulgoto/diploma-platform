@@ -7,6 +7,7 @@ import com.diploma.project.model.dto.UserUpdateRequest;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.UserService;
+import com.diploma.project.validation.AvatarKeyValidation;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -34,6 +35,7 @@ public class UserServiceImpl implements UserService {
         user.setLatitude(request.getLatitude());
         user.setLongitude(request.getLongitude());
         user.setDescription(request.getDescription());
+        AvatarKeyValidation.validate(request.getAvatarKey());
         user.setAvatarKey(request.getAvatarKey());
         User saved = userRepository.save(user);
         return toPrivateDto(saved);

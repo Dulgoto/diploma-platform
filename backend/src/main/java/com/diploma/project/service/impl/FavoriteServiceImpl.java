@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional(readOnly = true)
@@ -41,6 +42,10 @@ public class FavoriteServiceImpl implements FavoriteService {
         User user =
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         Ad ad = adRepository.findById(adId).orElseThrow(() -> new NotFoundException("Ad not found"));
+        User owner = ad.getOwner();
+        if (owner != null && Objects.equals(owner.getId(), user.getId())) {
+            throw new BadRequestException("You cannot add your own ad to favorites");
+        }
         if (favoriteRepository.existsByUser_EmailAndAd_Id(email, adId)) {
             throw new BadRequestException("Ad is already in favorites");
         }

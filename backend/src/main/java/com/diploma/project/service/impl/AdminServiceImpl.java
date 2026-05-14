@@ -1,5 +1,6 @@
 package com.diploma.project.service.impl;
 
+import com.diploma.project.exception.BadRequestException;
 import com.diploma.project.exception.ForbiddenException;
 import com.diploma.project.exception.NotFoundException;
 import com.diploma.project.model.dto.AdDto;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional(readOnly = true)
@@ -46,9 +48,12 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public UserPrivateDto banUser(Long userId, String adminEmail) {
-        validateAdmin(adminEmail);
+        User admin = requireAdmin(adminEmail);
         User user =
                 userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found"));
+        if (Objects.equals(admin.getId(), user.getId())) {
+            throw new BadRequestException("Admin cannot ban himself");
+        }
         user.setActive(false);
         return toPrivateDto(userRepository.save(user));
     }
@@ -103,11 +108,16 @@ public class AdminServiceImpl implements AdminService {
     }
 
     private void validateAdmin(String email) {
+        requireAdmin(email);
+    }
+
+    private User requireAdmin(String email) {
         User admin =
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         if (admin.getRole() != Role.ADMIN) {
             throw new ForbiddenException("Admin access required");
         }
+        return admin;
     }
 
     private static UserPrivateDto toPrivateDto(User user) {

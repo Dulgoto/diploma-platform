@@ -20,6 +20,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -29,6 +32,9 @@ import java.util.List;
 public class AdServiceImpl implements AdService {
 
     private static final int MAX_IMAGES_PER_AD = 10;
+    private static final String AD_IMAGES_PREFIX = "ad-images/";
+    private static final Path UPLOADS_DIR = Paths.get("uploads");
+    private static final Path AD_IMAGES_DIR = UPLOADS_DIR.resolve("ad-images").normalize();
 
     private final AdRepository adRepository;
     private final UserRepository userRepository;
@@ -173,9 +179,36 @@ public class AdServiceImpl implements AdService {
         if (imageKeys.size() > MAX_IMAGES_PER_AD) {
             throw new BadRequestException("Maximum 10 images are allowed");
         }
+        Path adImagesBase = AD_IMAGES_DIR.toAbsolutePath().normalize();
         for (String key : imageKeys) {
             if (key == null || key.isBlank()) {
                 throw new BadRequestException("Image key cannot be blank");
+            }
+            if (key.indexOf('\\') >= 0) {
+                throw new BadRequestException("Invalid image key");
+            }
+            if (key.contains("..")) {
+                throw new BadRequestException("Invalid image key");
+            }
+            if (Paths.get(key).isAbsolute()) {
+                throw new BadRequestException("Invalid image key");
+            }
+            if (!key.startsWith(AD_IMAGES_PREFIX)) {
+                throw new BadRequestException("Invalid image key");
+            }
+            String relativePart = key.substring(AD_IMAGES_PREFIX.length());
+            if (relativePart.isBlank()) {
+                throw new BadRequestException("Invalid image key");
+            }
+            if (Paths.get(relativePart).isAbsolute()) {
+                throw new BadRequestException("Invalid image key");
+            }
+            Path resolved = adImagesBase.resolve(relativePart).normalize();
+            if (!resolved.startsWith(adImagesBase)) {
+                throw new BadRequestException("Invalid image key");
+            }
+            if (!Files.isRegularFile(resolved)) {
+                throw new BadRequestException("Image file not found");
             }
         }
     }
