@@ -6,6 +6,7 @@ import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.AdType;
 import com.diploma.project.service.AdService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -54,7 +55,7 @@ public class AdController {
     public ResponseEntity<AdDto> createAd(
             @Valid @RequestBody AdCreateRequest request, Authentication authentication) {
         String email = authentication.getName();
-        return ResponseEntity.status(201).body(adService.createAd(request, email));
+        return ResponseEntity.status(HttpStatus.CREATED).body(adService.createAd(request, email));
     }
 
     @PutMapping("/{id}")

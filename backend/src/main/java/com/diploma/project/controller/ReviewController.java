@@ -4,6 +4,7 @@ import com.diploma.project.model.dto.ReviewDto;
 import com.diploma.project.model.dto.ReviewRequest;
 import com.diploma.project.service.ReviewService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,7 @@ public class ReviewController {
             @Valid @RequestBody ReviewRequest request,
             Authentication authentication) {
         String email = authentication.getName();
-        return ResponseEntity.status(201).body(reviewService.createReview(userId, email, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.createReview(userId, email, request));
     }
 
     @PutMapping("/users/{userId}")

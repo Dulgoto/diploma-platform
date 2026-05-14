@@ -4,6 +4,7 @@ import com.diploma.project.model.dto.MessageDto;
 import com.diploma.project.model.dto.MessageRequest;
 import com.diploma.project.service.MessageService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +27,7 @@ public class MessageController {
             @Valid @RequestBody MessageRequest request,
             Authentication authentication) {
         String email = authentication.getName();
-        return ResponseEntity.status(201).body(messageService.sendMessage(userId, email, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(messageService.sendMessage(userId, email, request));
     }
 
     @GetMapping("/users/{userId}")

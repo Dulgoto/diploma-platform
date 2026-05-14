@@ -2,6 +2,7 @@ package com.diploma.project.controller;
 
 import com.diploma.project.model.dto.UploadResponse;
 import com.diploma.project.service.FileStorageService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,6 @@ public class UploadController {
     @PostMapping("/ad-images")
     public ResponseEntity<UploadResponse> uploadAdImage(
             @RequestParam(value = "file", required = false) MultipartFile file) {
-        return ResponseEntity.status(201).body(fileStorageService.storeAdImage(file));
+        return ResponseEntity.status(HttpStatus.CREATED).body(fileStorageService.storeAdImage(file));
     }
 }

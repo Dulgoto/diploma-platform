@@ -6,6 +6,7 @@ import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.model.dto.UserRegisterRequest;
 import com.diploma.project.service.AuthService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,7 +25,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<UserPrivateDto> register(@Valid @RequestBody UserRegisterRequest request) {
-        return ResponseEntity.status(201).body(authService.register(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
     }
 
     @PostMapping("/login")
