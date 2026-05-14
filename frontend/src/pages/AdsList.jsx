@@ -3,12 +3,13 @@ import { Link } from "react-router-dom";
 import { get } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 
-function formatPriceLv(price) {
+function formatPriceEur(price) {
   if (price == null || Number.isNaN(Number(price))) {
-    return "— лв.";
+    return "— €";
   }
   const n = Number(price);
-  return `${n.toLocaleString("bg-BG", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} лв.`;
+  const formatted = n.toLocaleString("bg-BG", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return `${formatted} €`;
 }
 
 export default function AdsList() {
@@ -110,7 +111,7 @@ export default function AdsList() {
                   <p className="text-xs text-slate-500">
                     {[ad.category, ad.location].filter(Boolean).join(" · ") || "—"}
                   </p>
-                  <p className="mt-auto pt-2 text-base font-bold text-emerald-700">{formatPriceLv(ad.price)}</p>
+                  <p className="mt-auto pt-2 text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
                 </div>
               </Link>
             );

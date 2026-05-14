@@ -9,12 +9,13 @@ const AD_TYPE_LABELS = {
   SERVICE_REQUEST: "Търсене на услуга",
 };
 
-function formatPriceLv(price) {
+function formatPriceEur(price) {
   if (price == null || Number.isNaN(Number(price))) {
-    return "— лв.";
+    return "— €";
   }
   const n = Number(price);
-  return `${n.toLocaleString("bg-BG", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} лв.`;
+  const formatted = n.toLocaleString("bg-BG", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return `${formatted} €`;
 }
 
 export default function AdDetails() {
@@ -139,7 +140,7 @@ export default function AdDetails() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Обява #{ad.id}</p>
               <h1 className="mt-1 text-2xl font-bold text-slate-900">{ad.title}</h1>
-              <p className="mt-2 text-2xl font-bold text-emerald-700">{formatPriceLv(ad.price)}</p>
+              <p className="mt-2 text-2xl font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
               <dl className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
                 <div>
                   <dt className="text-slate-400">Категория</dt>
