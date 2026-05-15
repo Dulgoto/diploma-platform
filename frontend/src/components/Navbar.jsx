@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { put } from "../api/apiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const linkClass = ({ isActive }) =>
@@ -13,23 +14,64 @@ const linkClass = ({ isActive }) =>
 const dropdownLinkClass =
   "block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900";
 
+const AVATAR_OPTIONS = [
+  { key: null, label: "Стандартен" },
+  { key: "avatar-1.png", label: "Аватар 1" },
+  { key: "avatar-2.png", label: "Аватар 2" },
+  { key: "avatar-3.png", label: "Аватар 3" },
+  { key: "avatar-4.png", label: "Аватар 4" },
+  { key: "avatar-5.png", label: "Аватар 5" },
+];
+
+function avatarUrl(key) {
+  return key ? `/avatars/${key}` : "";
+}
+
+function isImageAvatar(key) {
+  return typeof key === "string" && key.trim().length > 0;
+}
+
+function avatarKeyFromUser(key) {
+  return isImageAvatar(key) ? key.trim() : null;
+}
+
+function errorMessage(err, fallback) {
+  const m = err?.body?.message;
+  return typeof m === "string" && m.trim() ? m : fallback;
+}
+
+function avatarOptionClass(selected) {
+  return [
+    "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 bg-slate-100 transition",
+    selected ? "border-emerald-500 ring-2 ring-emerald-100" : "border-slate-200 hover:border-emerald-200",
+  ].join(" ");
+}
+
 export default function Navbar() {
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout, user, refreshAccount } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
+  const [selectedAvatarKey, setSelectedAvatarKey] = useState(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
   const dropdownRef = useRef(null);
+  const avatarDropdownRef = useRef(null);
 
   const displayName = user?.name?.trim() ? user.name.trim() : "Профил";
   const avatarLetter =
     user?.name && user.name.trim() ? user.name.trim().charAt(0).toUpperCase() : "?";
 
   useEffect(() => {
-    if (!isDropdownOpen) {
+    if (!isDropdownOpen && !isAvatarMenuOpen) {
       return undefined;
     }
 
     function handleOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (avatarDropdownRef.current && !avatarDropdownRef.current.contains(event.target)) {
+        setIsAvatarMenuOpen(false);
       }
     }
 
@@ -40,19 +82,63 @@ export default function Navbar() {
       document.removeEventListener("mousedown", handleOutside);
       document.removeEventListener("touchstart", handleOutside);
     };
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isAvatarMenuOpen]);
 
-  function closeDropdown() {
+  function closeUserDropdown() {
     setIsDropdownOpen(false);
   }
 
-  function toggleDropdown() {
+  function closeAvatarMenu() {
+    setIsAvatarMenuOpen(false);
+    setAvatarError("");
+  }
+
+  function toggleUserDropdown() {
+    setIsAvatarMenuOpen(false);
     setIsDropdownOpen((open) => !open);
   }
 
+  function toggleAvatarMenu() {
+    setIsDropdownOpen(false);
+    setIsAvatarMenuOpen((open) => {
+      if (!open) {
+        setSelectedAvatarKey(avatarKeyFromUser(user?.avatarKey));
+        setAvatarError("");
+      }
+      return !open;
+    });
+  }
+
   function handleLogout() {
-    closeDropdown();
+    closeUserDropdown();
+    closeAvatarMenu();
     logout();
+  }
+
+  async function handleSaveAvatar() {
+    if (!user) {
+      return;
+    }
+    setAvatarSaving(true);
+    setAvatarError("");
+    try {
+      await put("/api/users/account", {
+        name: user.name ?? "",
+        location: user.location ?? "",
+        latitude: user.latitude ?? null,
+        longitude: user.longitude ?? null,
+        description: user.description ?? "",
+        avatarKey: selectedAvatarKey,
+      });
+      if (refreshAccount) {
+        await refreshAccount();
+      }
+      closeAvatarMenu();
+    } catch (err) {
+      setAvatarError(errorMessage(err, "Неуспешно запазване на аватара."));
+    } finally {
+      setAvatarSaving(false);
+    }
   }
 
   return (
@@ -89,28 +175,97 @@ export default function Navbar() {
                 ♥
               </Link>
 
-              {user?.id != null ? (
-                <Link
-                  to={`/users/${user.id}`}
-                  onClick={closeDropdown}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
-                  title={user?.name || "Профил"}
+              <div ref={avatarDropdownRef} className="relative">
+                <button
+                  type="button"
+                  onClick={toggleAvatarMenu}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50"
+                  title="Избор на аватар"
+                  aria-label="Избор на аватар"
+                  aria-haspopup="menu"
+                  aria-expanded={isAvatarMenuOpen}
                 >
-                  {avatarLetter}
-                </Link>
-              ) : (
-                <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-600 shadow-sm"
-                  aria-hidden
-                >
-                  ?
-                </span>
-              )}
+                  {isImageAvatar(user?.avatarKey) ? (
+                    <img
+                      src={avatarUrl(user.avatarKey)}
+                      alt=""
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : (
+                    avatarLetter
+                  )}
+                </button>
+
+                {isAvatarMenuOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-50 mt-2 w-72 origin-top-right rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
+                  >
+                    <h3 className="text-sm font-semibold text-slate-900">Избери аватар</h3>
+                    <div className="mt-3 grid grid-cols-3 gap-3">
+                      {AVATAR_OPTIONS.map((option) => {
+                        const selected = selectedAvatarKey === option.key;
+                        return (
+                          <button
+                            key={option.key ?? "default"}
+                            type="button"
+                            disabled={avatarSaving}
+                            onClick={() => setSelectedAvatarKey(option.key)}
+                            className="flex flex-col items-center gap-1.5 disabled:opacity-60"
+                            aria-label={option.label}
+                            aria-pressed={selected}
+                          >
+                            <span className={avatarOptionClass(selected)}>
+                              {option.key ? (
+                                <img
+                                  src={avatarUrl(option.key)}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-sm font-semibold text-slate-600">{avatarLetter}</span>
+                              )}
+                            </span>
+                            <span className="text-center text-[10px] leading-tight text-slate-600">
+                              {option.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={avatarSaving}
+                        onClick={handleSaveAvatar}
+                        className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        {avatarSaving ? "Запазване…" : "Запази"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={avatarSaving}
+                        onClick={closeAvatarMenu}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        Отказ
+                      </button>
+                    </div>
+
+                    {avatarError ? (
+                      <p className="mt-3 text-sm text-red-600" role="alert">
+                        {avatarError}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
 
               <div ref={dropdownRef} className="relative">
                 <button
                   type="button"
-                  onClick={toggleDropdown}
+                  onClick={toggleUserDropdown}
                   className="hidden max-w-[8rem] items-center gap-1 truncate rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-emerald-700 md:inline-flex"
                   aria-haspopup="menu"
                   aria-expanded={isDropdownOpen}
@@ -124,7 +279,7 @@ export default function Navbar() {
 
                 <button
                   type="button"
-                  onClick={toggleDropdown}
+                  onClick={toggleUserDropdown}
                   className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm text-slate-600 hover:bg-slate-100 hover:text-emerald-700 md:hidden"
                   title="Потребителско меню"
                   aria-haspopup="menu"
@@ -144,7 +299,7 @@ export default function Navbar() {
                         to={`/users/${user.id}`}
                         role="menuitem"
                         className={dropdownLinkClass}
-                        onClick={closeDropdown}
+                        onClick={closeUserDropdown}
                       >
                         Моят профил
                       </Link>
@@ -153,7 +308,7 @@ export default function Navbar() {
                       to="/my-ads"
                       role="menuitem"
                       className={dropdownLinkClass}
-                      onClick={closeDropdown}
+                      onClick={closeUserDropdown}
                     >
                       Моите обяви
                     </Link>
@@ -161,7 +316,7 @@ export default function Navbar() {
                       to="/favorites"
                       role="menuitem"
                       className={dropdownLinkClass}
-                      onClick={closeDropdown}
+                      onClick={closeUserDropdown}
                     >
                       Любими
                     </Link>
@@ -169,7 +324,7 @@ export default function Navbar() {
                       to="/post-ad"
                       role="menuitem"
                       className={dropdownLinkClass}
-                      onClick={closeDropdown}
+                      onClick={closeUserDropdown}
                     >
                       Публикувай обява
                     </Link>

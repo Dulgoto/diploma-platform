@@ -14,6 +14,16 @@ export function AuthProvider({ children }) {
     Boolean(typeof localStorage !== "undefined" && localStorage.getItem(TOKEN_KEY)),
   );
 
+  const refreshAccount = useCallback(async () => {
+    if (!token) {
+      return null;
+    }
+
+    const account = await get("/api/users/account");
+    setUser(account);
+    return account;
+  }, [token]);
+
   useEffect(() => {
     if (!token) {
       setUser(null);
@@ -24,12 +34,7 @@ export function AuthProvider({ children }) {
     let cancelled = false;
     setAuthLoading(true);
 
-    get("/api/users/account")
-      .then((account) => {
-        if (!cancelled) {
-          setUser(account);
-        }
-      })
+    refreshAccount()
       .catch((err) => {
         if (cancelled) {
           return;
@@ -51,7 +56,7 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, refreshAccount]);
 
   const login = useCallback((newToken, userData) => {
     if (typeof localStorage !== "undefined") {
@@ -79,8 +84,9 @@ export function AuthProvider({ children }) {
       logout,
       isAuthenticated: Boolean(token),
       authLoading,
+      refreshAccount,
     }),
-    [token, user, login, logout, authLoading],
+    [token, user, login, logout, authLoading, refreshAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -12,6 +12,10 @@ function errorMessage(err, fallback) {
   return typeof m === "string" && m.trim() ? m : fallback;
 }
 
+function isImageAvatar(key) {
+  return typeof key === "string" && key.trim().length > 0;
+}
+
 function formatPriceEur(price) {
   if (price == null || Number.isNaN(Number(price))) {
     return "— €";
@@ -135,7 +139,7 @@ function StarRowInteractive({ value, onChange, disabled }) {
 export default function PublicProfile() {
   const { id } = useParams();
   const location = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, refreshAccount } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -154,6 +158,12 @@ export default function PublicProfile() {
   const [adsLoading, setAdsLoading] = useState(false);
   const [adsError, setAdsError] = useState("");
   const [deletingAdId, setDeletingAdId] = useState(null);
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", location: "", description: "" });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileEditError, setProfileEditError] = useState("");
+  const [profileEditSuccess, setProfileEditSuccess] = useState("");
 
   async function reloadProfileAndReviews() {
     const [p, r] = await Promise.all([
@@ -332,6 +342,68 @@ export default function PublicProfile() {
 
   const reviewsHeading = isOwnProfile ? "Получени отзиви" : "Отзиви";
 
+  const profileInputClass =
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60";
+
+  function editFormFromProfile(p) {
+    return {
+      name: p?.name || "",
+      location: p?.location || "",
+      description: p?.description || "",
+    };
+  }
+
+  function openEditProfile() {
+    setEditForm(editFormFromProfile(profile));
+    setProfileEditError("");
+    setProfileEditSuccess("");
+    setIsEditingProfile(true);
+  }
+
+  function cancelEditProfile() {
+    setEditForm(editFormFromProfile(profile));
+    setProfileEditError("");
+    setProfileEditSuccess("");
+    setIsEditingProfile(false);
+  }
+
+  async function handleSaveProfile(e) {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileEditError("");
+    setProfileEditSuccess("");
+    try {
+      const updatedAccount = await put("/api/users/account", {
+        name: editForm.name.trim(),
+        location: editForm.location.trim(),
+        latitude: profile.latitude ?? null,
+        longitude: profile.longitude ?? null,
+        description: editForm.description.trim(),
+        avatarKey: profile.avatarKey ?? user?.avatarKey ?? null,
+      });
+      setProfile((prev) => ({
+        ...prev,
+        id: updatedAccount.id,
+        name: updatedAccount.name,
+        location: updatedAccount.location,
+        latitude: updatedAccount.latitude,
+        longitude: updatedAccount.longitude,
+        description: updatedAccount.description,
+        averageRating: updatedAccount.averageRating,
+        avatarKey: updatedAccount.avatarKey,
+      }));
+      if (refreshAccount) {
+        await refreshAccount();
+      }
+      setProfileEditSuccess("Профилът е обновен.");
+      setIsEditingProfile(false);
+    } catch (err) {
+      setProfileEditError(errorMessage(err, "Неуспешно обновяване на профила."));
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Link to="/ads" className="text-sm font-medium text-emerald-700 hover:underline">
@@ -353,41 +425,145 @@ export default function PublicProfile() {
       {!loading && !error && profile ? (
         <>
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[var(--shadow-card)] sm:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-emerald-100 text-2xl font-bold text-emerald-800">
-                {(profile.name || "?").trim().charAt(0).toUpperCase() || "?"}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-bold text-slate-900">{profile.name || "—"}</h1>
-                <p className="mt-1 text-sm text-slate-600">{profile.location || "—"}</p>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-emerald-100 text-2xl font-bold text-emerald-800">
+                    {isImageAvatar(profile.avatarKey) ? (
+                      <img
+                        src={`/avatars/${profile.avatarKey}`}
+                        alt=""
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      (profile.name || "?").trim().charAt(0).toUpperCase() || "?"
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-2xl font-bold text-slate-900">{profile.name || "—"}</h1>
+                    <p className="mt-1 text-sm text-slate-600">{profile.location || "—"}</p>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-700">
-                  <StarRowReadonly value={avgDisplay} />
-                  <span className="font-medium">
-                    {avgDisplay.toFixed(1)} / 5
-                    {profile.averageRating == null ? " (няма оценки)" : ""}
-                  </span>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                      <StarRowReadonly value={avgDisplay} />
+                      <span className="font-medium">
+                        {avgDisplay.toFixed(1)} / 5
+                        {profile.averageRating == null ? " (няма оценки)" : ""}
+                      </span>
+                    </div>
+
+                    {!isEditingProfile ? (
+                      profile.description ? (
+                        <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                          {profile.description}
+                        </p>
+                      ) : (
+                        <p className="mt-4 text-sm text-slate-400">Няма описание.</p>
+                      )
+                    ) : null}
+                  </div>
                 </div>
 
-                {isOwnProfile ? (
+                {isOwnProfile && !isEditingProfile ? (
                   <button
                     type="button"
-                    disabled
-                    title="Скоро"
-                    className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-400"
+                    onClick={openEditProfile}
+                    className="shrink-0 self-start rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
                   >
                     Редактирай профил
                   </button>
                 ) : null}
-
-                {profile.description ? (
-                  <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                    {profile.description}
-                  </p>
-                ) : (
-                  <p className="mt-4 text-sm text-slate-400">Няма описание.</p>
-                )}
               </div>
+
+              {!isEditingProfile && profileEditSuccess ? (
+                <p className="text-sm text-emerald-700" role="status">
+                  {profileEditSuccess}
+                </p>
+              ) : null}
+
+              {isEditingProfile ? (
+                <form
+                  onSubmit={handleSaveProfile}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5"
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="profile-edit-name" className="mb-1 block text-sm font-medium text-slate-700">
+                        Име
+                      </label>
+                      <input
+                        id="profile-edit-name"
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                        disabled={profileSaving}
+                        className={profileInputClass}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="profile-edit-location"
+                        className="mb-1 block text-sm font-medium text-slate-700"
+                      >
+                        Локация
+                      </label>
+                      <input
+                        id="profile-edit-location"
+                        type="text"
+                        value={editForm.location}
+                        onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
+                        disabled={profileSaving}
+                        className={profileInputClass}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="profile-edit-description"
+                        className="mb-1 block text-sm font-medium text-slate-700"
+                      >
+                        Описание
+                      </label>
+                      <textarea
+                        id="profile-edit-description"
+                        rows={4}
+                        value={editForm.description}
+                        onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                        disabled={profileSaving}
+                        className={profileInputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="submit"
+                      disabled={profileSaving}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {profileSaving ? "Запазване…" : "Запази"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEditProfile}
+                      disabled={profileSaving}
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      Отказ
+                    </button>
+                  </div>
+
+                  {profileEditError ? (
+                    <p className="mt-3 text-sm text-red-600" role="alert">
+                      {profileEditError}
+                    </p>
+                  ) : null}
+                  {profileEditSuccess ? (
+                    <p className="mt-3 text-sm text-emerald-700" role="status">
+                      {profileEditSuccess}
+                    </p>
+                  ) : null}
+                </form>
+              ) : null}
             </div>
           </section>
 
@@ -516,106 +692,106 @@ export default function PublicProfile() {
                 {isOwnProfile ? "Моите обяви" : "Обяви на потребителя"}
               </h2>
 
-            {adsLoading ? (
-              <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600 shadow-sm">
-                Зареждане на обяви…
-              </p>
-            ) : null}
+              {adsLoading ? (
+                <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600 shadow-sm">
+                  Зареждане на обяви…
+                </p>
+              ) : null}
 
-            {adsError && !adsLoading ? (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-                {adsError}
-              </p>
-            ) : null}
+              {adsError && !adsLoading ? (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                  {adsError}
+                </p>
+              ) : null}
 
-            {!adsLoading && !adsError && profileAds.length === 0 ? (
-              <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600 shadow-sm">
-                {isOwnProfile
-                  ? "Все още нямате публикувани обяви."
-                  : "Този потребител все още няма публикувани обяви."}
-              </p>
-            ) : null}
+              {!adsLoading && !adsError && profileAds.length === 0 ? (
+                <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600 shadow-sm">
+                  {isOwnProfile
+                    ? "Все още нямате публикувани обяви."
+                    : "Този потребител все още няма публикувани обяви."}
+                </p>
+              ) : null}
 
-            {!adsLoading && !adsError && profileAds.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {profileAds.map((ad) => {
-                  const sortedImages = [...(ad.images || [])].sort(
-                    (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
-                  );
-                  const firstKey = sortedImages[0]?.imageKey;
-                  const imgUrl = firstKey ? getImageUrl(firstKey) : "";
+              {!adsLoading && !adsError && profileAds.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {profileAds.map((ad) => {
+                    const sortedImages = [...(ad.images || [])].sort(
+                      (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
+                    );
+                    const firstKey = sortedImages[0]?.imageKey;
+                    const imgUrl = firstKey ? getImageUrl(firstKey) : "";
 
-                  return (
-                    <article
-                      key={ad.id}
-                      className="flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[var(--shadow-card)]"
-                    >
-                      <div className="relative aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200">
-                        {imgUrl ? (
-                          <img src={imgUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
-                            Няма снимка
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-1 flex-col gap-2 p-3">
-                        <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{ad.title || "—"}</h3>
-                        <p className="text-xs text-slate-500">
-                          {[ad.category, ad.location].filter(Boolean).join(" · ") || "—"}
-                        </p>
-                        <p className="text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
-                        <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
-                          <Link
-                            to={`/ads/${ad.id}`}
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                          >
-                            Виж
-                          </Link>
-                          {isOwnProfile ? (
-                            <>
-                              <Link
-                                to={`/ads/${ad.id}/edit`}
-                                className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
-                              >
-                                Редактирай
-                              </Link>
-                              <button
-                                type="button"
-                                disabled={deletingAdId === ad.id}
-                                onClick={async () => {
-                                  if (
-                                    !window.confirm(
-                                      "Сигурни ли сте, че искате да изтриете тази обява?",
-                                    )
-                                  ) {
-                                    return;
-                                  }
-                                  setDeletingAdId(ad.id);
-                                  try {
-                                    await del(`/api/ads/${ad.id}`);
-                                    setProfileAds((prev) => prev.filter((a) => a.id !== ad.id));
-                                  } catch (err) {
-                                    window.alert(
-                                      errorMessage(err, "Неуспешно изтриване на обява."),
-                                    );
-                                  } finally {
-                                    setDeletingAdId(null);
-                                  }
-                                }}
-                                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-100 disabled:opacity-60"
-                              >
-                                {deletingAdId === ad.id ? "…" : "Изтрий"}
-                              </button>
-                            </>
-                          ) : null}
+                    return (
+                      <article
+                        key={ad.id}
+                        className="flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[var(--shadow-card)]"
+                      >
+                        <div className="relative aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200">
+                          {imgUrl ? (
+                            <img src={imgUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                              Няма снимка
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : null}
+                        <div className="flex flex-1 flex-col gap-2 p-3">
+                          <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{ad.title || "—"}</h3>
+                          <p className="text-xs text-slate-500">
+                            {[ad.category, ad.location].filter(Boolean).join(" · ") || "—"}
+                          </p>
+                          <p className="text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
+                          <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+                            <Link
+                              to={`/ads/${ad.id}`}
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              Виж
+                            </Link>
+                            {isOwnProfile ? (
+                              <>
+                                <Link
+                                  to={`/ads/${ad.id}/edit`}
+                                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+                                >
+                                  Редактирай
+                                </Link>
+                                <button
+                                  type="button"
+                                  disabled={deletingAdId === ad.id}
+                                  onClick={async () => {
+                                    if (
+                                      !window.confirm(
+                                        "Сигурни ли сте, че искате да изтриете тази обява?",
+                                      )
+                                    ) {
+                                      return;
+                                    }
+                                    setDeletingAdId(ad.id);
+                                    try {
+                                      await del(`/api/ads/${ad.id}`);
+                                      setProfileAds((prev) => prev.filter((a) => a.id !== ad.id));
+                                    } catch (err) {
+                                      window.alert(
+                                        errorMessage(err, "Неуспешно изтриване на обява."),
+                                      );
+                                    } finally {
+                                      setDeletingAdId(null);
+                                    }
+                                  }}
+                                  className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-100 disabled:opacity-60"
+                                >
+                                  {deletingAdId === ad.id ? "…" : "Изтрий"}
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
             </section>
           </div>
 
