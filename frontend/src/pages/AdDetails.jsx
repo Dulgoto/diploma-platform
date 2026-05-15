@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { del, get, post } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -27,7 +27,8 @@ function errorMessage(err, fallback) {
 export default function AdDetails() {
   const { id } = useParams();
   const location = useLocation();
-  const { isAuthenticated, authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, authLoading, user } = useAuth();
 
   const [ad, setAd] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,8 @@ export default function AdDetails() {
   const [favStatusLoading, setFavStatusLoading] = useState(false);
   const [favMutating, setFavMutating] = useState(false);
   const [favError, setFavError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deletingAd, setDeletingAd] = useState(false);
 
   const sortedImages = useMemo(() => {
     if (!ad?.images?.length) {
@@ -135,6 +138,9 @@ export default function AdDetails() {
 
   const typeLabel = ad?.type ? AD_TYPE_LABELS[ad.type] || ad.type : "—";
 
+  const isOwner =
+    user?.id != null && ad?.ownerId != null && Number(user.id) === Number(ad.ownerId);
+
   return (
     <div className="space-y-6">
       <Link to="/ads" className="text-sm font-medium text-emerald-700 hover:underline">
@@ -225,56 +231,98 @@ export default function AdDetails() {
 
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap gap-2">
-                {!isAuthenticated ? (
-                  <Link
-                    to="/login"
-                    state={{ from: location }}
-                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm hover:bg-emerald-100"
-                  >
-                    Влезте, за да добавите в любими
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={favMutating || favStatusLoading || !ad?.id}
-                    onClick={async () => {
-                      setFavError("");
-                      setFavMutating(true);
-                      try {
-                        if (isFavorite) {
-                          await del(`/api/favorites/${ad.id}`);
-                          setIsFavorite(false);
-                        } else {
-                          await post(`/api/favorites/${ad.id}`, {});
-                          setIsFavorite(true);
+                {isOwner ? (
+                  <>
+                    <Link
+                      to={`/ads/${ad.id}/edit`}
+                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm hover:bg-emerald-100"
+                    >
+                      Редактирай обява
+                    </Link>
+                    <button
+                      type="button"
+                      disabled={deletingAd}
+                      onClick={async () => {
+                        if (
+                          !window.confirm("Сигурни ли сте, че искате да изтриете тази обява?")
+                        ) {
+                          return;
                         }
-                      } catch (err) {
-                        setFavError(errorMessage(err, "Неуспешна операция с любими."));
-                      } finally {
-                        setFavMutating(false);
-                      }
-                    }}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {favStatusLoading || favMutating
-                      ? "…"
-                      : isFavorite
-                        ? "♥ Премахни от любими"
-                        : "♡ Добави в любими"}
-                  </button>
+                        setDeleteError("");
+                        setDeletingAd(true);
+                        try {
+                          await del(`/api/ads/${ad.id}`);
+                          navigate("/ads", { replace: true });
+                        } catch (err) {
+                          setDeleteError(errorMessage(err, "Неуспешно изтриване на обява."));
+                        } finally {
+                          setDeletingAd(false);
+                        }
+                      }}
+                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 shadow-sm hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {deletingAd ? "Изтриване…" : "Изтрий обява"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {!isAuthenticated ? (
+                      <Link
+                        to="/login"
+                        state={{ from: location }}
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 shadow-sm hover:bg-emerald-100"
+                      >
+                        Влезте, за да добавите в любими
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={favMutating || favStatusLoading || !ad?.id}
+                        onClick={async () => {
+                          setFavError("");
+                          setFavMutating(true);
+                          try {
+                            if (isFavorite) {
+                              await del(`/api/favorites/${ad.id}`);
+                              setIsFavorite(false);
+                            } else {
+                              await post(`/api/favorites/${ad.id}`, {});
+                              setIsFavorite(true);
+                            }
+                          } catch (err) {
+                            setFavError(errorMessage(err, "Неуспешна операция с любими."));
+                          } finally {
+                            setFavMutating(false);
+                          }
+                        }}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {favStatusLoading || favMutating
+                          ? "…"
+                          : isFavorite
+                            ? "♥ Премахни от любими"
+                            : "♡ Добави в любими"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled
+                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-400"
+                      title="Скоро"
+                    >
+                      Изпрати съобщение
+                    </button>
+                  </>
                 )}
-                <button
-                  type="button"
-                  disabled
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-400"
-                  title="Скоро"
-                >
-                  Изпрати съобщение
-                </button>
               </div>
               {favError ? (
                 <p className="text-sm text-red-600" role="alert">
                   {favError}
+                </p>
+              ) : null}
+              {deleteError ? (
+                <p className="text-sm text-red-600" role="alert">
+                  {deleteError}
                 </p>
               ) : null}
             </div>
