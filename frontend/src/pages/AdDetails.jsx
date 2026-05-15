@@ -290,7 +290,12 @@ export default function AdDetails() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-slate-900">{ad.ownerName || "—"}</p>
                   {ad.ownerId != null ? (
-                    <p className="text-xs text-slate-500">Профил №{ad.ownerId} (маршрут скоро)</p>
+                    <Link
+                      to={`/users/${ad.ownerId}`}
+                      className="text-xs font-medium text-emerald-700 hover:underline"
+                    >
+                      Виж профила
+                    </Link>
                   ) : (
                     <p className="text-xs text-slate-500">—</p>
                   )}
