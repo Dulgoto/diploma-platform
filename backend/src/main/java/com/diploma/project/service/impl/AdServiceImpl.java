@@ -14,6 +14,7 @@ import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdService;
+import com.diploma.project.validation.AdCategoryValidation;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -131,7 +132,8 @@ public class AdServiceImpl implements AdService {
         ad.setDescription(request.getDescription());
         ad.setPrice(request.getPrice());
         ad.setType(request.getType());
-        ad.setCategory(request.getCategory());
+        AdCategoryValidation.validate(request.getCategory());
+        ad.setCategory(request.getCategory().trim());
         ad.setKeywords(request.getKeywords());
         ad.setOwner(owner);
         ad.setLocation(owner.getLocation());
@@ -155,7 +157,8 @@ public class AdServiceImpl implements AdService {
         existing.setDescription(request.getDescription());
         existing.setPrice(request.getPrice());
         existing.setType(request.getType());
-        existing.setCategory(request.getCategory());
+        AdCategoryValidation.validate(request.getCategory());
+        existing.setCategory(request.getCategory().trim());
         existing.setKeywords(request.getKeywords());
         replaceImages(existing, request.getImageKeys());
         Ad saved = adRepository.save(existing);

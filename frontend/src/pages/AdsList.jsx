@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { get } from "../api/apiClient.js";
+import { AD_CATEGORIES } from "../constants/adCategories.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 
 function formatPriceEur(price) {
@@ -12,10 +13,104 @@ function formatPriceEur(price) {
   return `${formatted} €`;
 }
 
+function normalizeText(value) {
+  if (value == null) {
+    return "";
+  }
+  return String(value).trim().toLowerCase();
+}
+
+function numericPrice(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.filter((v) => v != null && String(v).trim() !== ""))].sort((a, b) =>
+    String(a).localeCompare(String(b), "bg"),
+  );
+}
+
+function filterAds(ads, filters) {
+  const { searchTerm, selectedCategory, selectedLocation, minPrice, maxPrice, sortBy } = filters;
+  const query = normalizeText(searchTerm);
+  const min = minPrice !== "" ? numericPrice(minPrice) : null;
+  const max = maxPrice !== "" ? numericPrice(maxPrice) : null;
+
+  let result = ads.filter((ad) => {
+    if (query) {
+      const haystack = [
+        ad.title,
+        ad.description,
+        ad.category,
+        ad.location,
+      ]
+        .map(normalizeText)
+        .join(" ");
+      if (!haystack.includes(query)) {
+        return false;
+      }
+    }
+    if (selectedCategory && ad.category !== selectedCategory) {
+      return false;
+    }
+    if (selectedLocation && ad.location !== selectedLocation) {
+      return false;
+    }
+    const price = numericPrice(ad.price);
+    if (min != null && (price == null || price < min)) {
+      return false;
+    }
+    if (max != null && (price == null || price > max)) {
+      return false;
+    }
+    return true;
+  });
+
+  result = [...result];
+
+  switch (sortBy) {
+    case "price-asc":
+      result.sort((a, b) => (numericPrice(a.price) ?? Infinity) - (numericPrice(b.price) ?? Infinity));
+      break;
+    case "price-desc":
+      result.sort((a, b) => (numericPrice(b.price) ?? -Infinity) - (numericPrice(a.price) ?? -Infinity));
+      break;
+    case "title-asc":
+      result.sort((a, b) =>
+        normalizeText(a.title).localeCompare(normalizeText(b.title), "bg"),
+      );
+      break;
+    case "newest":
+    default:
+      result.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : NaN;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : NaN;
+        if (Number.isFinite(dateA) && Number.isFinite(dateB) && dateA !== dateB) {
+          return dateB - dateA;
+        }
+        return Number(b.id) - Number(a.id);
+      });
+      break;
+  }
+
+  return result;
+}
+
+const FILTER_INPUT_CLASS =
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
+
 export default function AdsList() {
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +137,44 @@ export default function AdsList() {
     };
   }, []);
 
+  const locations = useMemo(
+    () => uniqueSorted(ads.map((ad) => ad.location)),
+    [ads],
+  );
+
+  const filteredAds = useMemo(
+    () =>
+      filterAds(ads, {
+        searchTerm,
+        selectedCategory,
+        selectedLocation,
+        minPrice,
+        maxPrice,
+        sortBy,
+      }),
+    [ads, searchTerm, selectedCategory, selectedLocation, minPrice, maxPrice, sortBy],
+  );
+
+  function hasActiveFilters() {
+    return (
+      normalizeText(searchTerm) !== "" ||
+      selectedCategory !== "" ||
+      selectedLocation !== "" ||
+      minPrice !== "" ||
+      maxPrice !== "" ||
+      sortBy !== "newest"
+    );
+  }
+
+  function clearFilters() {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSelectedLocation("");
+    setMinPrice("");
+    setMaxPrice("");
+    setSortBy("newest");
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -56,6 +189,122 @@ export default function AdsList() {
           + Нова обява
         </Link>
       </div>
+
+      {!loading && !error ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="sm:col-span-2 lg:col-span-2">
+              <label htmlFor="ads-search" className="mb-1 block text-xs font-medium text-slate-600">
+                Търсене
+              </label>
+              <input
+                id="ads-search"
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Търси обява…"
+                className={FILTER_INPUT_CLASS}
+              />
+            </div>
+            <div>
+              <label htmlFor="ads-category" className="mb-1 block text-xs font-medium text-slate-600">
+                Категория
+              </label>
+              <select
+                id="ads-category"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className={FILTER_INPUT_CLASS}
+              >
+                <option value="">Всички категории</option>
+                {AD_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="ads-location" className="mb-1 block text-xs font-medium text-slate-600">
+                Локация
+              </label>
+              <select
+                id="ads-location"
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className={FILTER_INPUT_CLASS}
+              >
+                <option value="">Всички локации</option>
+                {locations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="ads-min-price" className="mb-1 block text-xs font-medium text-slate-600">
+                Мин. цена
+              </label>
+              <input
+                id="ads-min-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                placeholder="0"
+                className={FILTER_INPUT_CLASS}
+              />
+            </div>
+            <div>
+              <label htmlFor="ads-max-price" className="mb-1 block text-xs font-medium text-slate-600">
+                Макс. цена
+              </label>
+              <input
+                id="ads-max-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                placeholder="∞"
+                className={FILTER_INPUT_CLASS}
+              />
+            </div>
+            <div>
+              <label htmlFor="ads-sort" className="mb-1 block text-xs font-medium text-slate-600">
+                Сортирай
+              </label>
+              <select
+                id="ads-sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className={FILTER_INPUT_CLASS}
+              >
+                <option value="newest">Най-нови</option>
+                <option value="price-asc">Цена: ниска към висока</option>
+                <option value="price-desc">Цена: висока към ниска</option>
+                <option value="title-asc">Заглавие: А–Я</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              {hasActiveFilters() ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Изчисти
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-slate-500">
+            Показани {filteredAds.length} от {ads.length} обяви
+          </p>
+        </section>
+      ) : null}
 
       {loading ? (
         <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600 shadow-sm">
@@ -75,9 +324,22 @@ export default function AdsList() {
         </p>
       ) : null}
 
-      {!loading && !error && ads.length > 0 ? (
+      {!loading && !error && ads.length > 0 && filteredAds.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
+          <p className="text-sm text-slate-600">Няма обяви, които отговарят на избраните филтри.</p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
+          >
+            Изчисти филтрите
+          </button>
+        </div>
+      ) : null}
+
+      {!loading && !error && filteredAds.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {ads.map((ad) => {
+          {filteredAds.map((ad) => {
             const sortedImages = [...(ad.images || [])].sort(
               (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
             );

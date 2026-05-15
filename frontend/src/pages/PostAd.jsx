@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { post, uploadFile } from "../api/apiClient.js";
+import { AD_CATEGORIES, isValidAdCategory } from "../constants/adCategories.js";
 
 const AD_TYPES = [
   { value: "PRODUCT_SALE", label: "Продавам стока" },
@@ -21,7 +22,7 @@ export default function PostAd() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [type, setType] = useState("PRODUCT_SALE");
+  const [type, setType] = useState("");
   const [category, setCategory] = useState("");
   const [keywords, setKeywords] = useState("");
   const [imageItems, setImageItems] = useState([]);
@@ -112,6 +113,14 @@ export default function PostAd() {
             setError("Моля, въведете валидна цена (≥ 0).");
             return;
           }
+          if (!type) {
+            setError("Моля, изберете тип на обявата.");
+            return;
+          }
+          if (!category || !isValidAdCategory(category)) {
+            setError("Моля, изберете валидна категория.");
+            return;
+          }
 
           setLoading(true);
           let step = "upload";
@@ -130,7 +139,7 @@ export default function PostAd() {
               description: description.trim(),
               price: priceNum,
               type,
-              category: category.trim(),
+              category,
               keywords: keywords.trim(),
               imageKeys,
             });
@@ -205,9 +214,13 @@ export default function PostAd() {
               id="ad-type"
               value={type}
               onChange={(e) => setType(e.target.value)}
+              required
               disabled={loading}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
             >
+              <option value="" disabled>
+                Изберете тип
+              </option>
               {AD_TYPES.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -220,17 +233,25 @@ export default function PostAd() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="ad-category" className="block text-sm font-medium text-slate-700">
-              Категория
+              Категория <span className="text-red-500">*</span>
             </label>
-            <input
+            <select
               id="ad-category"
-              type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              required
               disabled={loading}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-              placeholder="Напр. Електроника"
-            />
+            >
+              <option value="" disabled>
+                Изберете категория
+              </option>
+              {AD_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label htmlFor="ad-keywords" className="block text-sm font-medium text-slate-700">

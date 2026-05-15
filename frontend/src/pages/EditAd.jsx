@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { get, put, uploadFile } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { AD_CATEGORIES, isValidAdCategory, resolveAdCategory } from "../constants/adCategories.js";
 
 const AD_TYPES = [
   { value: "PRODUCT_SALE", label: "Продавам стока" },
@@ -86,7 +87,7 @@ export default function EditAd() {
         setDescription(ad.description ?? "");
         setPrice(ad.price != null ? String(ad.price) : "");
         setType(ad.type ?? "PRODUCT_SALE");
-        setCategory(ad.category ?? "");
+        setCategory(resolveAdCategory(ad.category));
         setKeywords(ad.keywords ?? "");
         const sorted = [...(ad.images || [])].sort(
           (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
@@ -230,6 +231,10 @@ export default function EditAd() {
             setSubmitError("Изберете тип на обявата.");
             return;
           }
+          if (!category || !isValidAdCategory(category)) {
+            setSubmitError("Моля, изберете валидна категория.");
+            return;
+          }
           const total = existingImages.length + newImageItems.length;
           if (total < 1) {
             setSubmitError("Трябва да има поне една снимка.");
@@ -259,7 +264,7 @@ export default function EditAd() {
               description: description.trim(),
               price: priceNum,
               type,
-              category: category.trim(),
+              category,
               keywords: keywords.trim(),
               imageKeys,
             });
@@ -342,16 +347,22 @@ export default function EditAd() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="edit-category" className="block text-sm font-medium text-slate-700">
-              Категория
+              Категория <span className="text-red-500">*</span>
             </label>
-            <input
+            <select
               id="edit-category"
-              type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              required
               disabled={saving}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-            />
+            >
+              {AD_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label htmlFor="edit-keywords" className="block text-sm font-medium text-slate-700">
