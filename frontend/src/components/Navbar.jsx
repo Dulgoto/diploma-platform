@@ -313,14 +313,6 @@ export default function Navbar() {
                       Моите обяви
                     </Link>
                     <Link
-                      to="/favorites"
-                      role="menuitem"
-                      className={dropdownLinkClass}
-                      onClick={closeUserDropdown}
-                    >
-                      Любими
-                    </Link>
-                    <Link
                       to="/post-ad"
                       role="menuitem"
                       className={dropdownLinkClass}
