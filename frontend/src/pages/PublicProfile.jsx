@@ -4,6 +4,7 @@ import { del, get, post, put } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 import { backendRatingToStars, starsToBackendRating } from "../utils/ratingUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import LocationPicker from "../components/LocationPicker.jsx";
 
 const SLOT_CLASS = "relative h-8 w-8 shrink-0 select-none";
 
@@ -160,7 +161,13 @@ export default function PublicProfile() {
   const [deletingAdId, setDeletingAdId] = useState(null);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", location: "", description: "" });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    location: "",
+    latitude: null,
+    longitude: null,
+    description: "",
+  });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileEditError, setProfileEditError] = useState("");
   const [profileEditSuccess, setProfileEditSuccess] = useState("");
@@ -349,6 +356,8 @@ export default function PublicProfile() {
     return {
       name: p?.name || "",
       location: p?.location || "",
+      latitude: p?.latitude ?? null,
+      longitude: p?.longitude ?? null,
       description: p?.description || "",
     };
   }
@@ -376,8 +385,8 @@ export default function PublicProfile() {
       const updatedAccount = await put("/api/users/account", {
         name: editForm.name.trim(),
         location: editForm.location.trim(),
-        latitude: profile.latitude ?? null,
-        longitude: profile.longitude ?? null,
+        latitude: editForm.latitude ?? null,
+        longitude: editForm.longitude ?? null,
         description: editForm.description.trim(),
         avatarKey: profile.avatarKey ?? user?.avatarKey ?? null,
       });
@@ -501,19 +510,20 @@ export default function PublicProfile() {
                       />
                     </div>
                     <div>
-                      <label
-                        htmlFor="profile-edit-location"
-                        className="mb-1 block text-sm font-medium text-slate-700"
-                      >
-                        Локация
-                      </label>
-                      <input
-                        id="profile-edit-location"
-                        type="text"
+                      <label className="mb-1 block text-sm font-medium text-slate-700">Локация</label>
+                      <LocationPicker
                         value={editForm.location}
-                        onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
+                        latitude={editForm.latitude}
+                        longitude={editForm.longitude}
                         disabled={profileSaving}
-                        className={profileInputClass}
+                        onChange={(next) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            location: next.location,
+                            latitude: next.latitude,
+                            longitude: next.longitude,
+                          }))
+                        }
                       />
                     </div>
                     <div>

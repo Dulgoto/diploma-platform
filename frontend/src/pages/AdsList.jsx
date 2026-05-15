@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api/apiClient.js";
+import LocationFilterPicker, { getSettlementNamesForRegion } from "../components/LocationFilterPicker.jsx";
 import { AD_CATEGORIES } from "../constants/adCategories.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 
@@ -25,14 +26,17 @@ function numericPrice(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function uniqueSorted(values) {
-  return [...new Set(values.filter((v) => v != null && String(v).trim() !== ""))].sort((a, b) =>
-    String(a).localeCompare(String(b), "bg"),
-  );
-}
-
 function filterAds(ads, filters) {
-  const { searchTerm, selectedCategory, selectedLocation, minPrice, maxPrice, sortBy } = filters;
+  const {
+    searchTerm,
+    selectedCategory,
+    selectedRegion,
+    selectedLocation,
+    locationRegions,
+    minPrice,
+    maxPrice,
+    sortBy,
+  } = filters;
   const query = normalizeText(searchTerm);
   const min = minPrice !== "" ? numericPrice(minPrice) : null;
   const max = maxPrice !== "" ? numericPrice(maxPrice) : null;
@@ -54,8 +58,15 @@ function filterAds(ads, filters) {
     if (selectedCategory && ad.category !== selectedCategory) {
       return false;
     }
-    if (selectedLocation && ad.location !== selectedLocation) {
-      return false;
+    if (selectedLocation) {
+      if (ad.location !== selectedLocation) {
+        return false;
+      }
+    } else if (selectedRegion) {
+      const names = getSettlementNamesForRegion(locationRegions, selectedRegion);
+      if (!names.has(ad.location)) {
+        return false;
+      }
     }
     const price = numericPrice(ad.price);
     if (min != null && (price == null || price < min)) {
@@ -120,6 +131,7 @@ function filtersFromSearchParams(searchParams) {
   return {
     searchTerm: searchParams.get("q") ?? "",
     selectedCategory: parseCategoryFromUrl(searchParams.get("category") ?? ""),
+    selectedRegion: searchParams.get("region") ?? "",
     selectedLocation: searchParams.get("location") ?? "",
     minPrice: searchParams.get("minPrice") ?? "",
     maxPrice: searchParams.get("maxPrice") ?? "",
@@ -135,6 +147,9 @@ function buildSearchParamsFromFilters(filters) {
   }
   if (filters.selectedCategory) {
     params.set("category", filters.selectedCategory);
+  }
+  if (filters.selectedRegion) {
+    params.set("region", filters.selectedRegion);
   }
   if (filters.selectedLocation) {
     params.set("location", filters.selectedLocation);
@@ -161,7 +176,9 @@ export default function AdsList() {
   const [selectedCategory, setSelectedCategory] = useState(() =>
     parseCategoryFromUrl(searchParams.get("category") ?? ""),
   );
+  const [selectedRegion, setSelectedRegion] = useState(() => searchParams.get("region") ?? "");
   const [selectedLocation, setSelectedLocation] = useState(() => searchParams.get("location") ?? "");
+  const [locationRegions, setLocationRegions] = useState([]);
   const [minPrice, setMinPrice] = useState(() => searchParams.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(() => searchParams.get("maxPrice") ?? "");
   const [sortBy, setSortBy] = useState(() => parseSortFromUrl(searchParams.get("sort")));
@@ -170,6 +187,7 @@ export default function AdsList() {
     const fromUrl = filtersFromSearchParams(searchParams);
     setSearchTerm(fromUrl.searchTerm);
     setSelectedCategory(fromUrl.selectedCategory);
+    setSelectedRegion(fromUrl.selectedRegion);
     setSelectedLocation(fromUrl.selectedLocation);
     setMinPrice(fromUrl.minPrice);
     setMaxPrice(fromUrl.maxPrice);
@@ -205,28 +223,62 @@ export default function AdsList() {
     };
   }, []);
 
-  const locations = useMemo(
-    () => uniqueSorted(ads.map((ad) => ad.location)),
-    [ads],
-  );
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/data/bg-locations.json")
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load locations");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setLocationRegions(Array.isArray(data) ? data : []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocationRegions([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredAds = useMemo(
     () =>
       filterAds(ads, {
         searchTerm,
         selectedCategory,
+        selectedRegion,
         selectedLocation,
+        locationRegions,
         minPrice,
         maxPrice,
         sortBy,
       }),
-    [ads, searchTerm, selectedCategory, selectedLocation, minPrice, maxPrice, sortBy],
+    [
+      ads,
+      searchTerm,
+      selectedCategory,
+      selectedRegion,
+      selectedLocation,
+      locationRegions,
+      minPrice,
+      maxPrice,
+      sortBy,
+    ],
   );
 
   function hasActiveFilters() {
     return (
       normalizeText(searchTerm) !== "" ||
       selectedCategory !== "" ||
+      selectedRegion !== "" ||
       selectedLocation !== "" ||
       minPrice !== "" ||
       maxPrice !== "" ||
@@ -237,6 +289,7 @@ export default function AdsList() {
   function clearFilters() {
     setSearchTerm("");
     setSelectedCategory("");
+    setSelectedRegion("");
     setSelectedLocation("");
     setMinPrice("");
     setMaxPrice("");
@@ -276,6 +329,7 @@ export default function AdsList() {
                   updateUrlFromFilters({
                     searchTerm: nextSearch,
                     selectedCategory,
+                    selectedRegion,
                     selectedLocation,
                     minPrice,
                     maxPrice,
@@ -299,6 +353,7 @@ export default function AdsList() {
                   updateUrlFromFilters({
                     searchTerm,
                     selectedCategory: nextCategory,
+                    selectedRegion,
                     selectedLocation,
                     minPrice,
                     maxPrice,
@@ -316,33 +371,25 @@ export default function AdsList() {
               </select>
             </div>
             <div>
-              <label htmlFor="ads-location" className="mb-1 block text-xs font-medium text-slate-600">
-                Локация
-              </label>
-              <select
-                id="ads-location"
-                value={selectedLocation}
-                onChange={(e) => {
-                  const nextLocation = e.target.value;
-                  setSelectedLocation(nextLocation);
+              <label className="mb-1 block text-xs font-medium text-slate-600">Локация</label>
+              <LocationFilterPicker
+                selectedRegion={selectedRegion}
+                selectedLocation={selectedLocation}
+                disabled={loading}
+                onChange={(next) => {
+                  setSelectedRegion(next.region);
+                  setSelectedLocation(next.location);
                   updateUrlFromFilters({
                     searchTerm,
                     selectedCategory,
-                    selectedLocation: nextLocation,
+                    selectedRegion: next.region,
+                    selectedLocation: next.location,
                     minPrice,
                     maxPrice,
                     sortBy,
                   });
                 }}
-                className={FILTER_INPUT_CLASS}
-              >
-                <option value="">Всички локации</option>
-                {locations.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label htmlFor="ads-min-price" className="mb-1 block text-xs font-medium text-slate-600">
@@ -360,6 +407,7 @@ export default function AdsList() {
                   updateUrlFromFilters({
                     searchTerm,
                     selectedCategory,
+                    selectedRegion,
                     selectedLocation,
                     minPrice: nextMin,
                     maxPrice,
@@ -386,6 +434,7 @@ export default function AdsList() {
                   updateUrlFromFilters({
                     searchTerm,
                     selectedCategory,
+                    selectedRegion,
                     selectedLocation,
                     minPrice,
                     maxPrice: nextMax,
@@ -409,6 +458,7 @@ export default function AdsList() {
                   updateUrlFromFilters({
                     searchTerm,
                     selectedCategory,
+                    selectedRegion,
                     selectedLocation,
                     minPrice,
                     maxPrice,
