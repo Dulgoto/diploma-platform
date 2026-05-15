@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api/apiClient.js";
 import { AD_CATEGORIES } from "../constants/adCategories.js";
 import { getImageUrl } from "../utils/imageUtils.js";
@@ -100,17 +100,85 @@ function filterAds(ads, filters) {
 const FILTER_INPUT_CLASS =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
 
+const SORT_OPTIONS = new Set(["newest", "price-asc", "price-desc", "title-asc"]);
+
+function parseCategoryFromUrl(value) {
+  if (!value) {
+    return "";
+  }
+  return AD_CATEGORIES.includes(value) ? value : "";
+}
+
+function parseSortFromUrl(value) {
+  if (!value || value === "newest") {
+    return "newest";
+  }
+  return SORT_OPTIONS.has(value) ? value : "newest";
+}
+
+function filtersFromSearchParams(searchParams) {
+  return {
+    searchTerm: searchParams.get("q") ?? "",
+    selectedCategory: parseCategoryFromUrl(searchParams.get("category") ?? ""),
+    selectedLocation: searchParams.get("location") ?? "",
+    minPrice: searchParams.get("minPrice") ?? "",
+    maxPrice: searchParams.get("maxPrice") ?? "",
+    sortBy: parseSortFromUrl(searchParams.get("sort")),
+  };
+}
+
+function buildSearchParamsFromFilters(filters) {
+  const params = new URLSearchParams();
+  const q = filters.searchTerm?.trim();
+  if (q) {
+    params.set("q", q);
+  }
+  if (filters.selectedCategory) {
+    params.set("category", filters.selectedCategory);
+  }
+  if (filters.selectedLocation) {
+    params.set("location", filters.selectedLocation);
+  }
+  if (filters.minPrice !== "" && filters.minPrice != null) {
+    params.set("minPrice", String(filters.minPrice));
+  }
+  if (filters.maxPrice !== "" && filters.maxPrice != null) {
+    params.set("maxPrice", String(filters.maxPrice));
+  }
+  if (filters.sortBy && filters.sortBy !== "newest") {
+    params.set("sort", filters.sortBy);
+  }
+  return params;
+}
+
 export default function AdsList() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("q") ?? "");
+  const [selectedCategory, setSelectedCategory] = useState(() =>
+    parseCategoryFromUrl(searchParams.get("category") ?? ""),
+  );
+  const [selectedLocation, setSelectedLocation] = useState(() => searchParams.get("location") ?? "");
+  const [minPrice, setMinPrice] = useState(() => searchParams.get("minPrice") ?? "");
+  const [maxPrice, setMaxPrice] = useState(() => searchParams.get("maxPrice") ?? "");
+  const [sortBy, setSortBy] = useState(() => parseSortFromUrl(searchParams.get("sort")));
+
+  useEffect(() => {
+    const fromUrl = filtersFromSearchParams(searchParams);
+    setSearchTerm(fromUrl.searchTerm);
+    setSelectedCategory(fromUrl.selectedCategory);
+    setSelectedLocation(fromUrl.selectedLocation);
+    setMinPrice(fromUrl.minPrice);
+    setMaxPrice(fromUrl.maxPrice);
+    setSortBy(fromUrl.sortBy);
+  }, [searchParams]);
+
+  function updateUrlFromFilters(nextFilters) {
+    setSearchParams(buildSearchParamsFromFilters(nextFilters), { replace: true });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -173,6 +241,7 @@ export default function AdsList() {
     setMinPrice("");
     setMaxPrice("");
     setSortBy("newest");
+    setSearchParams(new URLSearchParams());
   }
 
   return (
@@ -201,7 +270,18 @@ export default function AdsList() {
                 id="ads-search"
                 type="search"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const nextSearch = e.target.value;
+                  setSearchTerm(nextSearch);
+                  updateUrlFromFilters({
+                    searchTerm: nextSearch,
+                    selectedCategory,
+                    selectedLocation,
+                    minPrice,
+                    maxPrice,
+                    sortBy,
+                  });
+                }}
                 placeholder="Търси обява…"
                 className={FILTER_INPUT_CLASS}
               />
@@ -213,7 +293,18 @@ export default function AdsList() {
               <select
                 id="ads-category"
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(e) => {
+                  const nextCategory = e.target.value;
+                  setSelectedCategory(nextCategory);
+                  updateUrlFromFilters({
+                    searchTerm,
+                    selectedCategory: nextCategory,
+                    selectedLocation,
+                    minPrice,
+                    maxPrice,
+                    sortBy,
+                  });
+                }}
                 className={FILTER_INPUT_CLASS}
               >
                 <option value="">Всички категории</option>
@@ -231,7 +322,18 @@ export default function AdsList() {
               <select
                 id="ads-location"
                 value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
+                onChange={(e) => {
+                  const nextLocation = e.target.value;
+                  setSelectedLocation(nextLocation);
+                  updateUrlFromFilters({
+                    searchTerm,
+                    selectedCategory,
+                    selectedLocation: nextLocation,
+                    minPrice,
+                    maxPrice,
+                    sortBy,
+                  });
+                }}
                 className={FILTER_INPUT_CLASS}
               >
                 <option value="">Всички локации</option>
@@ -252,7 +354,18 @@ export default function AdsList() {
                 min="0"
                 step="0.01"
                 value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
+                onChange={(e) => {
+                  const nextMin = e.target.value;
+                  setMinPrice(nextMin);
+                  updateUrlFromFilters({
+                    searchTerm,
+                    selectedCategory,
+                    selectedLocation,
+                    minPrice: nextMin,
+                    maxPrice,
+                    sortBy,
+                  });
+                }}
                 placeholder="0"
                 className={FILTER_INPUT_CLASS}
               />
@@ -267,7 +380,18 @@ export default function AdsList() {
                 min="0"
                 step="0.01"
                 value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
+                onChange={(e) => {
+                  const nextMax = e.target.value;
+                  setMaxPrice(nextMax);
+                  updateUrlFromFilters({
+                    searchTerm,
+                    selectedCategory,
+                    selectedLocation,
+                    minPrice,
+                    maxPrice: nextMax,
+                    sortBy,
+                  });
+                }}
                 placeholder="∞"
                 className={FILTER_INPUT_CLASS}
               />
@@ -279,7 +403,18 @@ export default function AdsList() {
               <select
                 id="ads-sort"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  const nextSort = e.target.value;
+                  setSortBy(nextSort);
+                  updateUrlFromFilters({
+                    searchTerm,
+                    selectedCategory,
+                    selectedLocation,
+                    minPrice,
+                    maxPrice,
+                    sortBy: nextSort,
+                  });
+                }}
                 className={FILTER_INPUT_CLASS}
               >
                 <option value="newest">Най-нови</option>
