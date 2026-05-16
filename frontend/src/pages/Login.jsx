@@ -11,7 +11,6 @@ function errorMessage(err, fallback) {
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -48,7 +47,7 @@ export default function Login() {
               login(authRes.token, null);
               const account = await get("/api/users/account");
               login(authRes.token, account);
-              navigate(from, { replace: true });
+              navigate("/", { replace: true });
             } catch (err) {
               setError(errorMessage(err, "Неуспешен вход."));
             } finally {

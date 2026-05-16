@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { put, uploadFile } from "../api/apiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -71,6 +71,7 @@ function avatarOptionClass(selected, variant = "default") {
 }
 
 export default function Navbar() {
+  const navigate = useNavigate();
   const { isAuthenticated, logout, user, refreshAccount } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
@@ -144,6 +145,7 @@ export default function Navbar() {
     closeUserDropdown();
     closeAvatarMenu();
     logout();
+    navigate("/");
   }
 
   function handleCustomAvatarClick() {
