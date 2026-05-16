@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { del, get, post } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import AdLocationMap from "../components/AdLocationMap.jsx";
 
 const AD_TYPE_LABELS = {
   PRODUCT_SALE: "Продажба на стока",
@@ -348,6 +349,19 @@ export default function AdDetails() {
                     <p className="text-xs text-slate-500">—</p>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
+              <h2 className="text-sm font-semibold text-slate-900">Локация</h2>
+              <p className="mt-1 text-sm text-slate-600">{ad.location || "—"}</p>
+              <div className="mt-4">
+                <AdLocationMap
+                  latitude={ad.latitude}
+                  longitude={ad.longitude}
+                  location={ad.location}
+                  title={ad.title}
+                />
               </div>
             </div>
           </aside>

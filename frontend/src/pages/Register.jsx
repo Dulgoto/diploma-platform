@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { post } from "../api/apiClient.js";
+import LocationPicker from "../components/LocationPicker.jsx";
 
 function errorMessage(err, fallback) {
   const m = err?.body?.message;
@@ -24,6 +25,8 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [locationVal, setLocationVal] = useState("");
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
   const [description, setDescription] = useState("");
   const [avatarKey, setAvatarKey] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,6 +60,8 @@ export default function Register() {
               const loc = locationVal.trim();
               if (loc) {
                 payload.location = loc;
+                payload.latitude = latitude;
+                payload.longitude = longitude;
               }
               const desc = description.trim();
               if (desc) {
@@ -137,17 +142,22 @@ export default function Register() {
             />
           </div>
           <div>
-            <label htmlFor="reg-location" className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-slate-700">
               Локация <span className="font-normal text-slate-400">(по избор)</span>
             </label>
-            <input
-              id="reg-location"
-              type="text"
-              value={locationVal}
-              onChange={(e) => setLocationVal(e.target.value)}
-              disabled={loading}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-            />
+            <div className="mt-1">
+              <LocationPicker
+                value={locationVal}
+                latitude={latitude}
+                longitude={longitude}
+                disabled={loading}
+                onChange={(next) => {
+                  setLocationVal(next.location);
+                  setLatitude(next.latitude);
+                  setLongitude(next.longitude);
+                }}
+              />
+            </div>
           </div>
           <div>
             <label htmlFor="reg-desc" className="block text-sm font-medium text-slate-700">
