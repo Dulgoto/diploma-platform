@@ -2,6 +2,7 @@ package com.diploma.project.model.dto;
 
 import com.diploma.project.model.entity.AdStatus;
 import com.diploma.project.model.entity.AdType;
+import com.diploma.project.model.entity.ApprovalStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +18,7 @@ public class AdDto {
     private String location;
     private AdType type;
     private AdStatus status;
+    private ApprovalStatus approvalStatus;
     private String category;
     private String keywords;
     private Long ownerId;
@@ -119,6 +121,14 @@ public class AdDto {
 
     public void setStatus(AdStatus status) {
         this.status = status;
+    }
+
+    public ApprovalStatus getApprovalStatus() {
+        return approvalStatus;
+    }
+
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        this.approvalStatus = approvalStatus;
     }
 
     public String getCategory() {

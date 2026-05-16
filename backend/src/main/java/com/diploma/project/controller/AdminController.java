@@ -1,9 +1,12 @@
 package com.diploma.project.controller;
 
+import com.diploma.project.model.dto.AdApprovalUpdateRequest;
 import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.AdStatusUpdateRequest;
 import com.diploma.project.model.dto.ReviewDto;
 import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.service.AdminService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -44,6 +47,25 @@ public class AdminController {
     public ResponseEntity<List<AdDto>> getAllAds(Authentication authentication) {
         String adminEmail = authentication.getName();
         return ResponseEntity.ok(adminService.getAllAds(adminEmail));
+    }
+
+    @PatchMapping("/ads/{id}/status")
+    public ResponseEntity<AdDto> updateAdStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody AdStatusUpdateRequest request,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(adminService.updateAdStatus(id, request.getStatus(), adminEmail));
+    }
+
+    @PatchMapping("/ads/{id}/approval")
+    public ResponseEntity<AdDto> updateAdApprovalStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody AdApprovalUpdateRequest request,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(
+                adminService.updateAdApprovalStatus(id, request.getApprovalStatus(), adminEmail));
     }
 
     @DeleteMapping("/ads/{id}")

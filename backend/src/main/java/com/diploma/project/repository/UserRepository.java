@@ -1,5 +1,6 @@
 package com.diploma.project.repository;
 
+import com.diploma.project.model.entity.Role;
 import com.diploma.project.model.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -13,4 +14,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     List<User> findAllByOrderByCreatedAtDesc();
+
+    List<User> findByRoleAndActiveTrue(Role role);
 }

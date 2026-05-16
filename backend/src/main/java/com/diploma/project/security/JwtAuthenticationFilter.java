@@ -1,5 +1,6 @@
 package com.diploma.project.security;
 
+import com.diploma.project.model.entity.Role;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -7,12 +8,14 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -39,13 +42,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (jwtService.isTokenValid(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
             String email = jwtService.extractEmail(token);
             User user = userRepository.findByEmail(email).orElse(null);
-            if (user == null || Boolean.FALSE.equals(user.getActive())) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User account is inactive");
-                return;
+            if (user != null && Boolean.TRUE.equals(user.getActive())) {
+                List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                if (user.getRole() == Role.ADMIN) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                }
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(email, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);

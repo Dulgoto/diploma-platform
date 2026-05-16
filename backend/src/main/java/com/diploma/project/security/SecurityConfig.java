@@ -56,7 +56,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/messages/**")
                         .authenticated()
                         .requestMatchers("/api/admin/**")
-                        .authenticated()
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/uploads/**")
                         .authenticated()
                         .anyRequest()

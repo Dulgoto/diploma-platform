@@ -1,6 +1,7 @@
 package com.diploma.project.service.impl;
 
 import com.diploma.project.exception.BadRequestException;
+import com.diploma.project.exception.ForbiddenException;
 import com.diploma.project.exception.UnauthorizedException;
 import com.diploma.project.model.dto.AuthResponse;
 import com.diploma.project.model.dto.LoginRequest;
@@ -65,8 +66,8 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new UnauthorizedException("Invalid email or password");
         }
-        if (!Boolean.TRUE.equals(user.getActive())) {
-            throw new UnauthorizedException("User account is blocked");
+        if (Boolean.FALSE.equals(user.getActive())) {
+            throw new ForbiddenException("User account is deactivated");
         }
         String token = jwtService.generateToken(user.getEmail());
         return new AuthResponse(token, user.getEmail(), user.getRole());

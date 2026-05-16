@@ -11,12 +11,13 @@ import PostAd from "./pages/PostAd.jsx";
 import PublicProfile from "./pages/PublicProfile.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import AdminPanel from "./pages/AdminPanel.jsx";
 
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-surface)]">
       <Navbar />
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 w-full max-w-[96rem] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/ads" element={<AdsList />} />
@@ -54,6 +55,14 @@ export default function App() {
             }
           />
           <Route path="/users/:id" element={<PublicProfile />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

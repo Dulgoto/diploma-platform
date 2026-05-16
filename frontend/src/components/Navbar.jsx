@@ -320,6 +320,16 @@ export default function Navbar() {
                     >
                       Публикувай обява
                     </Link>
+                    {user?.role === "ADMIN" ? (
+                      <Link
+                        to="/admin"
+                        role="menuitem"
+                        className={dropdownLinkClass}
+                        onClick={closeUserDropdown}
+                      >
+                        Админ панел
+                      </Link>
+                    ) : null}
                     <div className="my-2 border-t border-slate-100" role="separator" />
                     <button
                       type="button"

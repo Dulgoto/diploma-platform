@@ -38,6 +38,10 @@ public class Ad {
     @Column(nullable = false)
     private AdStatus status = AdStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING_APPROVAL;
+
     private String category;
     private String keywords;
 
@@ -58,6 +62,9 @@ public class Ad {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) {
             this.status = AdStatus.ACTIVE;
+        }
+        if (this.approvalStatus == null) {
+            this.approvalStatus = ApprovalStatus.PENDING_APPROVAL;
         }
     }
 }

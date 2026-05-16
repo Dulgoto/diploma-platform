@@ -11,11 +11,13 @@ import com.diploma.project.model.entity.Ad;
 import com.diploma.project.model.entity.AdImage;
 import com.diploma.project.model.entity.AdStatus;
 import com.diploma.project.model.entity.AdType;
+import com.diploma.project.model.entity.ApprovalStatus;
 import com.diploma.project.model.entity.Role;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.service.AdService;
+import com.diploma.project.service.NotificationService;
 import com.diploma.project.validation.AdCategoryValidation;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Sort;
@@ -41,15 +43,20 @@ public class AdServiceImpl implements AdService {
 
     private final AdRepository adRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public AdServiceImpl(AdRepository adRepository, UserRepository userRepository) {
+    public AdServiceImpl(
+            AdRepository adRepository,
+            UserRepository userRepository,
+            NotificationService notificationService) {
         this.adRepository = adRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
     public List<AdDto> getAllAds() {
-        return adRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+        return adRepository.findByApprovalStatusOrderByCreatedAtDesc(ApprovalStatus.APPROVED).stream()
                 .map(AdServiceImpl::toAdDto)
                 .toList();
     }
@@ -94,10 +101,8 @@ public class AdServiceImpl implements AdService {
             if (maxPrice != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
             }
+            predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.APPROVED));
 
-            if (predicates.isEmpty()) {
-                return cb.conjunction();
-            }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
 
@@ -118,9 +123,23 @@ public class AdServiceImpl implements AdService {
     }
 
     @Override
-    public AdDto getAdById(Long id) {
+    public AdDto getAdById(Long id, String email) {
         Ad ad = adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
-        return toAdDto(ad);
+        if (ad.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            return toAdDto(ad);
+        }
+        if (email == null) {
+            throw new NotFoundException("Ad not found");
+        }
+        User currentUser =
+                userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("Ad not found"));
+        if (currentUser.getRole() == Role.ADMIN) {
+            return toAdDto(ad);
+        }
+        if (ad.getOwner() != null && email.equals(ad.getOwner().getEmail())) {
+            return toAdDto(ad);
+        }
+        throw new NotFoundException("Ad not found");
     }
 
     @Override
@@ -131,6 +150,7 @@ public class AdServiceImpl implements AdService {
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         validateAdTypeForUserRole(request.getType(), owner.getRole());
         Ad ad = new Ad();
+        ad.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         ad.setStatus(AdStatus.ACTIVE);
         ad.setTitle(request.getTitle());
         ad.setDescription(request.getDescription());
@@ -145,6 +165,7 @@ public class AdServiceImpl implements AdService {
         ad.setLongitude(owner.getLongitude());
         replaceImages(ad, request.getImageKeys());
         Ad saved = adRepository.save(ad);
+        notifyAdminsForPendingAd(saved, "Нова обява чака одобрение");
         return toAdDto(saved);
     }
 
@@ -168,8 +189,10 @@ public class AdServiceImpl implements AdService {
         AdCategoryValidation.validate(request.getCategory(), request.getType());
         existing.setCategory(request.getCategory().trim());
         existing.setKeywords(request.getKeywords());
+        existing.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         replaceImages(existing, request.getImageKeys());
         Ad saved = adRepository.save(existing);
+        notifyAdminsForPendingAd(saved, "Редактирана обява чака повторно одобрение");
         return toAdDto(saved);
     }
 
@@ -201,6 +224,16 @@ public class AdServiceImpl implements AdService {
             throw new ForbiddenException("You are not the owner of this ad");
         }
         adRepository.delete(ad);
+    }
+
+    private void notifyAdminsForPendingAd(Ad ad, String reason) {
+        List<User> admins = userRepository.findByRoleAndActiveTrue(Role.ADMIN);
+        String title = "Обява чака одобрение";
+        String adTitle = ad.getTitle() != null ? ad.getTitle() : "Без заглавие";
+        String message = reason + ": \"" + adTitle + "\"";
+        for (User admin : admins) {
+            notificationService.createNotification(admin.getId(), title, message);
+        }
     }
 
     private static boolean isStatusValidForAdType(AdType type, AdStatus status) {
@@ -327,6 +360,7 @@ public class AdServiceImpl implements AdService {
         dto.setLocation(ad.getLocation());
         dto.setType(ad.getType());
         dto.setStatus(ad.getStatus());
+        dto.setApprovalStatus(ad.getApprovalStatus());
         dto.setCategory(ad.getCategory());
         dto.setKeywords(ad.getKeywords());
         dto.setCreatedAt(ad.getCreatedAt());

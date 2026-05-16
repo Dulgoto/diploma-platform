@@ -23,7 +23,7 @@ public interface AdService {
             Double maxPrice,
             String sort);
 
-    AdDto getAdById(Long id);
+    AdDto getAdById(Long id, String email);
 
     AdDto createAd(AdCreateRequest request, String email);
 
