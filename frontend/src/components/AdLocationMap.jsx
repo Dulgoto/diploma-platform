@@ -35,7 +35,7 @@ export default function AdLocationMap({ latitude, longitude, location, title }) 
   const popupLocation = location?.trim() || "—";
 
   return (
-    <div className="h-[220px] overflow-hidden rounded-xl border border-slate-200">
+    <div className="relative z-0 h-[220px] overflow-hidden rounded-xl border border-slate-200">
       <MapContainer
         key={`${lat}-${lng}`}
         center={position}

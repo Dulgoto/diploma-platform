@@ -34,6 +34,10 @@ public class Ad {
     @Enumerated(EnumType.STRING)
     private AdType type;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AdStatus status = AdStatus.ACTIVE;
+
     private String category;
     private String keywords;
 
@@ -52,5 +56,8 @@ public class Ad {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = AdStatus.ACTIVE;
+        }
     }
 }

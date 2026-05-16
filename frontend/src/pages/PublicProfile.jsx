@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { del, get, post, put } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
@@ -24,6 +24,29 @@ function formatPriceEur(price) {
   const n = Number(price);
   const formatted = n.toLocaleString("bg-BG", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   return `${formatted} €`;
+}
+
+const AD_STATUS_LABELS = {
+  ACTIVE: "Активна",
+  COMPLETED: "Изпълнена",
+  INACTIVE: "Неактивна",
+};
+
+function statusBadgeClass(status) {
+  if (status === "ACTIVE") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+  if (status === "COMPLETED") {
+    return "border-sky-200 bg-sky-50 text-sky-800";
+  }
+  if (status === "INACTIVE") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function statusLabel(status) {
+  return AD_STATUS_LABELS[status] || "—";
 }
 
 function formatDate(iso) {
@@ -156,6 +179,7 @@ export default function PublicProfile() {
   const [reviewSuccess, setReviewSuccess] = useState("");
 
   const [profileAds, setProfileAds] = useState([]);
+  const [showInactiveAds, setShowInactiveAds] = useState(false);
   const [adsLoading, setAdsLoading] = useState(false);
   const [adsError, setAdsError] = useState("");
   const [deletingAdId, setDeletingAdId] = useState(null);
@@ -291,6 +315,13 @@ export default function PublicProfile() {
 
   const isOwnProfile =
     user?.id != null && profile?.id != null && Number(user.id) === Number(profile.id);
+
+  const visibleProfileAds = useMemo(() => {
+    if (showInactiveAds) {
+      return profileAds;
+    }
+    return profileAds.filter((ad) => ad.status === "ACTIVE");
+  }, [profileAds, showInactiveAds]);
 
   const myReview = isAuthenticated
     ? reviews.find((rev) => rev.reviewerId != null && user?.id != null && Number(rev.reviewerId) === Number(user.id))
@@ -698,9 +729,20 @@ export default function PublicProfile() {
             </aside>
 
             <section className="min-w-0 space-y-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                {isOwnProfile ? "Моите обяви" : "Обяви на потребителя"}
-              </h2>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {isOwnProfile ? "Моите обяви" : "Обяви на потребителя"}
+                </h2>
+                <label className="inline-flex w-fit items-center gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={showInactiveAds}
+                    onChange={(e) => setShowInactiveAds(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  Покажи и неактивни/приключени
+                </label>
+              </div>
 
               {adsLoading ? (
                 <p className="rounded-xl border border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-600 shadow-sm">
@@ -714,7 +756,7 @@ export default function PublicProfile() {
                 </p>
               ) : null}
 
-              {!adsLoading && !adsError && profileAds.length === 0 ? (
+              {!adsLoading && !adsError && visibleProfileAds.length === 0 ? (
                 <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600 shadow-sm">
                   {isOwnProfile
                     ? "Все още нямате публикувани обяви."
@@ -722,9 +764,9 @@ export default function PublicProfile() {
                 </p>
               ) : null}
 
-              {!adsLoading && !adsError && profileAds.length > 0 ? (
+              {!adsLoading && !adsError && visibleProfileAds.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {profileAds.map((ad) => {
+                  {visibleProfileAds.map((ad) => {
                     const sortedImages = [...(ad.images || [])].sort(
                       (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
                     );
@@ -750,7 +792,14 @@ export default function PublicProfile() {
                           <p className="text-xs text-slate-500">
                             {[ad.category, ad.location].filter(Boolean).join(" · ") || "—"}
                           </p>
-                          <p className="text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
+                            <span
+                              className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass(ad.status)}`}
+                            >
+                              {statusLabel(ad.status)}
+                            </span>
+                          </div>
                           <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
                             <Link
                               to={`/ads/${ad.id}`}

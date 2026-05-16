@@ -1,21 +1,60 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { get, put, uploadFile } from "../api/apiClient.js";
+import { get, patch, put, uploadFile } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { AD_CATEGORIES, isValidAdCategory, resolveAdCategory } from "../constants/adCategories.js";
+import { getCategoriesForAdType, isValidAdCategory, resolveAdCategory } from "../constants/adCategories.js";
 
 const MAX_IMAGES = 10;
+
+const AD_STATUS_LABELS = {
+  ACTIVE: "Активна",
+  COMPLETED: "Изпълнена",
+  INACTIVE: "Вече не е активна",
+};
+
+function getAllowedStatusesForAdType(type) {
+  if (type === "SERVICE_REQUEST") {
+    return [
+      { value: "ACTIVE", label: "Активна" },
+      { value: "COMPLETED", label: "Изпълнена" },
+    ];
+  }
+  if (type === "SERVICE_OFFER" || type === "PRODUCT_SALE") {
+    return [
+      { value: "ACTIVE", label: "Активна" },
+      { value: "INACTIVE", label: "Вече не е активна" },
+    ];
+  }
+  return [];
+}
+
+function statusBadgeClass(status) {
+  if (status === "ACTIVE") {
+    return "bg-emerald-50 text-emerald-800 border-emerald-200";
+  }
+  if (status === "COMPLETED") {
+    return "bg-sky-50 text-sky-800 border-sky-200";
+  }
+  if (status === "INACTIVE") {
+    return "bg-slate-100 text-slate-700 border-slate-200";
+  }
+  return "bg-slate-50 text-slate-600 border-slate-200";
+}
 
 function getAllowedAdTypes(role) {
   if (role === "CLIENT") {
     return [{ value: "SERVICE_REQUEST", label: "Търся услуга" }];
   }
   if (role === "SERVICE_PROVIDER") {
-    return [{ value: "SERVICE_OFFER", label: "Предлагам услуга" }];
+    return [
+      { value: "SERVICE_OFFER", label: "Предлагам услуга" },
+      { value: "PRODUCT_SALE", label: "Продавам стока" },
+    ];
   }
   if (role === "ADMIN") {
     return [
+      { value: "PRODUCT_SALE", label: "Продавам стока" },
       { value: "SERVICE_OFFER", label: "Предлагам услуга" },
       { value: "SERVICE_REQUEST", label: "Търся услуга" },
     ];
@@ -43,6 +82,8 @@ export default function EditAd() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [type, setType] = useState("");
+  const [status, setStatus] = useState("ACTIVE");
+  const [initialStatus, setInitialStatus] = useState("ACTIVE");
   const [category, setCategory] = useState("");
   const [keywords, setKeywords] = useState("");
   const [existingImages, setExistingImages] = useState([]);
@@ -55,6 +96,7 @@ export default function EditAd() {
   const [saving, setSaving] = useState(false);
 
   const allowedAdTypes = useMemo(() => getAllowedAdTypes(user?.role), [user?.role]);
+  const availableCategories = useMemo(() => getCategoriesForAdType(type), [type]);
 
   const nextIdRef = useRef(0);
   const newImageItemsRef = useRef([]);
@@ -75,6 +117,21 @@ export default function EditAd() {
       setType(allowedAdTypes[0].value);
     }
   }, [allowedAdTypes, type]);
+
+  useEffect(() => {
+    if (type === "SERVICE_REQUEST" && status === "INACTIVE") {
+      setStatus("ACTIVE");
+    }
+    if ((type === "SERVICE_OFFER" || type === "PRODUCT_SALE") && status === "COMPLETED") {
+      setStatus("ACTIVE");
+    }
+  }, [type, status]);
+
+  useEffect(() => {
+    if (category && !isValidAdCategory(category, type)) {
+      setCategory("");
+    }
+  }, [category, type]);
 
   useEffect(() => {
     if (!id) {
@@ -105,7 +162,9 @@ export default function EditAd() {
         setDescription(ad.description ?? "");
         setPrice(ad.price != null ? String(ad.price) : "");
         setType(ad.type ?? "");
-        setCategory(resolveAdCategory(ad.category));
+        setStatus(ad.status ?? "ACTIVE");
+        setInitialStatus(ad.status ?? "ACTIVE");
+        setCategory(resolveAdCategory(ad.category, ad.type));
         setKeywords(ad.keywords ?? "");
         const sorted = [...(ad.images || [])].sort(
           (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
@@ -143,6 +202,8 @@ export default function EditAd() {
   }, [id, authLoading]);
 
   const totalImages = existingImages.length + newImageItems.length;
+  const allowedStatuses = getAllowedStatusesForAdType(type);
+  const statusLabel = status ? AD_STATUS_LABELS[status] || status : "—";
 
   function addImageFiles(fileList) {
     const files = Array.from(fileList || []).filter((f) => f.type.startsWith("image/"));
@@ -253,7 +314,7 @@ export default function EditAd() {
             setSubmitError("Нямате право да използвате този тип обява.");
             return;
           }
-          if (!category || !isValidAdCategory(category)) {
+          if (!category || !isValidAdCategory(category, type)) {
             setSubmitError("Моля, изберете валидна категория.");
             return;
           }
@@ -264,6 +325,10 @@ export default function EditAd() {
           }
           if (total > MAX_IMAGES) {
             setSubmitError("Максимум 10 снимки.");
+            return;
+          }
+          if (!allowedStatuses.some((opt) => opt.value === status)) {
+            setSubmitError("Избраният статус не е валиден за този тип обява.");
             return;
           }
 
@@ -281,7 +346,7 @@ export default function EditAd() {
             }
             const imageKeys = [...existingKeys, ...uploadedKeys];
             step = "save";
-            const updated = await put(`/api/ads/${id}`, {
+            let updated = await put(`/api/ads/${id}`, {
               title: titleTrim,
               description: description.trim(),
               price: priceNum,
@@ -290,6 +355,17 @@ export default function EditAd() {
               keywords: keywords.trim(),
               imageKeys,
             });
+
+            if (status !== initialStatus) {
+              try {
+                updated = await patch(`/api/ads/${id}/status`, { status });
+                setInitialStatus(updated.status ?? status);
+              } catch (patchErr) {
+                setSubmitError("Данните са запазени, но статусът не беше обновен.");
+                return;
+              }
+            }
+
             navigate(`/ads/${updated?.id ?? id}`, { replace: true });
           } catch (err) {
             const fallback =
@@ -329,23 +405,7 @@ export default function EditAd() {
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="edit-price" className="block text-sm font-medium text-slate-700">
-              Цена (€) <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="edit-price"
-              type="number"
-              min={0}
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-              disabled={saving}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-            />
-          </div>
+        <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label htmlFor="edit-type" className="block text-sm font-medium text-slate-700">
               Тип <span className="text-red-500">*</span>
@@ -378,9 +438,6 @@ export default function EditAd() {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="edit-category" className="block text-sm font-medium text-slate-700">
               Категория <span className="text-red-500">*</span>
@@ -390,15 +447,65 @@ export default function EditAd() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
-              disabled={saving}
+              disabled={saving || availableCategories.length === 0}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
             >
-              {AD_CATEGORIES.map((cat) => (
+              <option value="" disabled>
+                Изберете категория
+              </option>
+              {availableCategories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label htmlFor="edit-status" className="block text-sm font-medium text-slate-700">
+              Статус
+            </label>
+            {allowedStatuses.length > 0 ? (
+              <div className="mt-1 space-y-2">
+                <select
+                  id="edit-status"
+                  value={status}
+                  disabled={saving || allowedStatuses.length === 0}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
+                >
+                  {allowedStatuses.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(status)}`}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="edit-price" className="block text-sm font-medium text-slate-700">
+              Цена (€) <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="edit-price"
+              type="number"
+              min={0}
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              required
+              disabled={saving}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
+              placeholder="0"
+            />
           </div>
           <div>
             <label htmlFor="edit-keywords" className="block text-sm font-medium text-slate-700">

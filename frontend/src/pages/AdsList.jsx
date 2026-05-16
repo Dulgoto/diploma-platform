@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api/apiClient.js";
 import LocationFilterPicker, { getSettlementNamesForRegion } from "../components/LocationFilterPicker.jsx";
-import { AD_CATEGORIES } from "../constants/adCategories.js";
+import { AD_CATEGORIES, getCategoriesForAdType, isValidAdCategory } from "../constants/adCategories.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 
 function formatPriceEur(price) {
@@ -12,6 +12,43 @@ function formatPriceEur(price) {
   const n = Number(price);
   const formatted = n.toLocaleString("bg-BG", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   return `${formatted} €`;
+}
+
+const AD_STATUS_LABELS = {
+  ACTIVE: "Активна",
+  COMPLETED: "Изпълнена",
+  INACTIVE: "Неактивна",
+};
+
+function statusBadgeClass(status) {
+  if (status === "ACTIVE") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+  if (status === "COMPLETED") {
+    return "border-sky-200 bg-sky-50 text-sky-800";
+  }
+  if (status === "INACTIVE") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function statusLabel(status) {
+  return AD_STATUS_LABELS[status] || "—";
+}
+
+const AD_TYPE_OPTIONS = [
+  { value: "", label: "Всички типове" },
+  { value: "PRODUCT_SALE", label: "Продавам стока" },
+  { value: "SERVICE_OFFER", label: "Предлагам услуга" },
+  { value: "SERVICE_REQUEST", label: "Търся услуга" },
+];
+
+function parseTypeFromUrl(value) {
+  if (!value) {
+    return "";
+  }
+  return AD_TYPE_OPTIONS.some((opt) => opt.value === value) ? value : "";
 }
 
 function normalizeText(value) {
@@ -29,6 +66,7 @@ function numericPrice(value) {
 function filterAds(ads, filters) {
   const {
     searchTerm,
+    selectedType,
     selectedCategory,
     selectedRegion,
     selectedLocation,
@@ -42,6 +80,12 @@ function filterAds(ads, filters) {
   const max = maxPrice !== "" ? numericPrice(maxPrice) : null;
 
   let result = ads.filter((ad) => {
+    if (ad.status !== "ACTIVE") {
+      return false;
+    }
+    if (selectedType && ad.type !== selectedType) {
+      return false;
+    }
     if (query) {
       const haystack = [
         ad.title,
@@ -130,6 +174,7 @@ function parseSortFromUrl(value) {
 function filtersFromSearchParams(searchParams) {
   return {
     searchTerm: searchParams.get("q") ?? "",
+    selectedType: parseTypeFromUrl(searchParams.get("type") ?? ""),
     selectedCategory: parseCategoryFromUrl(searchParams.get("category") ?? ""),
     selectedRegion: searchParams.get("region") ?? "",
     selectedLocation: searchParams.get("location") ?? "",
@@ -144,6 +189,9 @@ function buildSearchParamsFromFilters(filters) {
   const q = filters.searchTerm?.trim();
   if (q) {
     params.set("q", q);
+  }
+  if (filters.selectedType) {
+    params.set("type", filters.selectedType);
   }
   if (filters.selectedCategory) {
     params.set("category", filters.selectedCategory);
@@ -173,6 +221,9 @@ export default function AdsList() {
   const [error, setError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get("q") ?? "");
+  const [selectedType, setSelectedType] = useState(() =>
+    parseTypeFromUrl(searchParams.get("type") ?? ""),
+  );
   const [selectedCategory, setSelectedCategory] = useState(() =>
     parseCategoryFromUrl(searchParams.get("category") ?? ""),
   );
@@ -183,9 +234,17 @@ export default function AdsList() {
   const [maxPrice, setMaxPrice] = useState(() => searchParams.get("maxPrice") ?? "");
   const [sortBy, setSortBy] = useState(() => parseSortFromUrl(searchParams.get("sort")));
 
+  const availableCategories = useMemo(() => {
+    if (selectedType) {
+      return getCategoriesForAdType(selectedType);
+    }
+    return AD_CATEGORIES;
+  }, [selectedType]);
+
   useEffect(() => {
     const fromUrl = filtersFromSearchParams(searchParams);
     setSearchTerm(fromUrl.searchTerm);
+    setSelectedType(fromUrl.selectedType);
     setSelectedCategory(fromUrl.selectedCategory);
     setSelectedRegion(fromUrl.selectedRegion);
     setSelectedLocation(fromUrl.selectedLocation);
@@ -197,6 +256,24 @@ export default function AdsList() {
   function updateUrlFromFilters(nextFilters) {
     setSearchParams(buildSearchParamsFromFilters(nextFilters), { replace: true });
   }
+
+  useEffect(() => {
+    if (selectedCategory && selectedType && !isValidAdCategory(selectedCategory, selectedType)) {
+      const nextCategory = "";
+      setSelectedCategory(nextCategory);
+      updateUrlFromFilters({
+        searchTerm,
+        selectedType,
+        selectedCategory: nextCategory,
+        selectedRegion,
+        selectedLocation,
+        minPrice,
+        maxPrice,
+        sortBy,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync invalid category when type changes; avoid loop via guard
+  }, [selectedCategory, selectedType]);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,6 +330,7 @@ export default function AdsList() {
     () =>
       filterAds(ads, {
         searchTerm,
+        selectedType,
         selectedCategory,
         selectedRegion,
         selectedLocation,
@@ -264,6 +342,7 @@ export default function AdsList() {
     [
       ads,
       searchTerm,
+      selectedType,
       selectedCategory,
       selectedRegion,
       selectedLocation,
@@ -277,6 +356,7 @@ export default function AdsList() {
   function hasActiveFilters() {
     return (
       normalizeText(searchTerm) !== "" ||
+      selectedType !== "" ||
       selectedCategory !== "" ||
       selectedRegion !== "" ||
       selectedLocation !== "" ||
@@ -288,6 +368,7 @@ export default function AdsList() {
 
   function clearFilters() {
     setSearchTerm("");
+    setSelectedType("");
     setSelectedCategory("");
     setSelectedRegion("");
     setSelectedLocation("");
@@ -328,6 +409,7 @@ export default function AdsList() {
                   setSearchTerm(nextSearch);
                   updateUrlFromFilters({
                     searchTerm: nextSearch,
+                    selectedType,
                     selectedCategory,
                     selectedRegion,
                     selectedLocation,
@@ -341,6 +423,43 @@ export default function AdsList() {
               />
             </div>
             <div>
+              <label htmlFor="ads-type" className="mb-1 block text-xs font-medium text-slate-600">
+                Тип
+              </label>
+              <select
+                id="ads-type"
+                value={selectedType}
+                onChange={(e) => {
+                  const nextType = e.target.value;
+                  const nextCategory =
+                    selectedCategory && nextType && !isValidAdCategory(selectedCategory, nextType)
+                      ? ""
+                      : selectedCategory;
+
+                  setSelectedType(nextType);
+                  setSelectedCategory(nextCategory);
+
+                  updateUrlFromFilters({
+                    searchTerm,
+                    selectedType: nextType,
+                    selectedCategory: nextCategory,
+                    selectedRegion,
+                    selectedLocation,
+                    minPrice,
+                    maxPrice,
+                    sortBy,
+                  });
+                }}
+                className={FILTER_INPUT_CLASS}
+              >
+                {AD_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value || "all"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label htmlFor="ads-category" className="mb-1 block text-xs font-medium text-slate-600">
                 Категория
               </label>
@@ -352,6 +471,7 @@ export default function AdsList() {
                   setSelectedCategory(nextCategory);
                   updateUrlFromFilters({
                     searchTerm,
+                    selectedType,
                     selectedCategory: nextCategory,
                     selectedRegion,
                     selectedLocation,
@@ -363,7 +483,7 @@ export default function AdsList() {
                 className={FILTER_INPUT_CLASS}
               >
                 <option value="">Всички категории</option>
-                {AD_CATEGORIES.map((cat) => (
+                {availableCategories.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
@@ -381,6 +501,7 @@ export default function AdsList() {
                   setSelectedLocation(next.location);
                   updateUrlFromFilters({
                     searchTerm,
+                    selectedType,
                     selectedCategory,
                     selectedRegion: next.region,
                     selectedLocation: next.location,
@@ -406,6 +527,7 @@ export default function AdsList() {
                   setMinPrice(nextMin);
                   updateUrlFromFilters({
                     searchTerm,
+                    selectedType,
                     selectedCategory,
                     selectedRegion,
                     selectedLocation,
@@ -433,6 +555,7 @@ export default function AdsList() {
                   setMaxPrice(nextMax);
                   updateUrlFromFilters({
                     searchTerm,
+                    selectedType,
                     selectedCategory,
                     selectedRegion,
                     selectedLocation,
@@ -457,6 +580,7 @@ export default function AdsList() {
                   setSortBy(nextSort);
                   updateUrlFromFilters({
                     searchTerm,
+                    selectedType,
                     selectedCategory,
                     selectedRegion,
                     selectedLocation,
@@ -486,7 +610,7 @@ export default function AdsList() {
             </div>
           </div>
           <p className="mt-3 text-sm text-slate-500">
-            Показани {filteredAds.length} от {ads.length} обяви
+            Показани {filteredAds.length} активни обяви
           </p>
         </section>
       ) : null}
@@ -558,7 +682,14 @@ export default function AdsList() {
                   <p className="text-xs text-slate-500">
                     {[ad.category, ad.location].filter(Boolean).join(" · ") || "—"}
                   </p>
-                  <p className="mt-auto pt-2 text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
+                  <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                    <p className="text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass(ad.status)}`}
+                    >
+                      {statusLabel(ad.status)}
+                    </span>
+                  </div>
                 </div>
               </Link>
             );

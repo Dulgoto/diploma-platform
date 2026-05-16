@@ -18,3 +18,10 @@ body {
   background-color: var(--color-surface);
   color: var(--color-ink);
 }
+
+/* Contain Leaflet panes/controls inside the map; header dropdowns use z-[1100]+. */
+.leaflet-container {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}

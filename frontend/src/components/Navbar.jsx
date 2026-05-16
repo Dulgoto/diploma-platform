@@ -142,7 +142,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur">
+    <header className="sticky top-0 z-[1100] border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2 font-semibold text-slate-900">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-sm text-white shadow-sm">
@@ -175,7 +175,7 @@ export default function Navbar() {
                 ♥
               </Link>
 
-              <div ref={avatarDropdownRef} className="relative">
+              <div ref={avatarDropdownRef} className="relative z-[1100]">
                 <button
                   type="button"
                   onClick={toggleAvatarMenu}
@@ -199,7 +199,7 @@ export default function Navbar() {
                 {isAvatarMenuOpen ? (
                   <div
                     role="menu"
-                    className="absolute right-0 top-full z-50 mt-2 w-72 origin-top-right rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
+                    className="absolute right-0 top-full z-[1200] mt-2 w-72 origin-top-right rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
                   >
                     <h3 className="text-sm font-semibold text-slate-900">Избери аватар</h3>
                     <div className="mt-3 grid grid-cols-3 gap-3">
@@ -262,7 +262,7 @@ export default function Navbar() {
                 ) : null}
               </div>
 
-              <div ref={dropdownRef} className="relative">
+              <div ref={dropdownRef} className="relative z-[1100]">
                 <button
                   type="button"
                   onClick={toggleUserDropdown}
@@ -292,7 +292,7 @@ export default function Navbar() {
                 {isDropdownOpen ? (
                   <div
                     role="menu"
-                    className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right rounded-2xl border border-slate-200 bg-white py-2 shadow-lg"
+                    className="absolute right-0 top-full z-[1200] mt-2 w-56 origin-top-right rounded-2xl border border-slate-200 bg-white py-2 shadow-lg"
                   >
                     {user?.id != null ? (
                       <Link

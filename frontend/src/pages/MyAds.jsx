@@ -12,6 +12,29 @@ function formatPriceEur(price) {
   return `${formatted} €`;
 }
 
+const AD_STATUS_LABELS = {
+  ACTIVE: "Активна",
+  COMPLETED: "Изпълнена",
+  INACTIVE: "Неактивна",
+};
+
+function statusBadgeClass(status) {
+  if (status === "ACTIVE") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+  if (status === "COMPLETED") {
+    return "border-sky-200 bg-sky-50 text-sky-800";
+  }
+  if (status === "INACTIVE") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function statusLabel(status) {
+  return AD_STATUS_LABELS[status] || "—";
+}
+
 function errorMessage(err, fallback) {
   const m = err?.body?.message;
   return typeof m === "string" && m.trim() ? m : fallback;
@@ -107,7 +130,14 @@ export default function MyAds() {
                   <p className="text-xs text-slate-500">
                     {[ad.category, ad.location].filter(Boolean).join(" · ") || "—"}
                   </p>
-                  <p className="text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-base font-bold text-emerald-700">{formatPriceEur(ad.price)}</p>
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass(ad.status)}`}
+                    >
+                      {statusLabel(ad.status)}
+                    </span>
+                  </div>
                   <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
                     <Link
                       to={`/ads/${ad.id}`}

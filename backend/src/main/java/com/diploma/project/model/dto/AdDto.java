@@ -1,5 +1,6 @@
 package com.diploma.project.model.dto;
 
+import com.diploma.project.model.entity.AdStatus;
 import com.diploma.project.model.entity.AdType;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public class AdDto {
     private Double longitude;
     private String location;
     private AdType type;
+    private AdStatus status;
     private String category;
     private String keywords;
     private Long ownerId;
@@ -109,6 +111,14 @@ public class AdDto {
 
     public void setType(AdType type) {
         this.type = type;
+    }
+
+    public AdStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(AdStatus status) {
+        this.status = status;
     }
 
     public String getCategory() {

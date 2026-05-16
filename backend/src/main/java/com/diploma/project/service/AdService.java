@@ -3,6 +3,7 @@ package com.diploma.project.service;
 import com.diploma.project.model.dto.AdCreateRequest;
 import com.diploma.project.model.dto.AdDto;
 import com.diploma.project.model.dto.AdUpdateRequest;
+import com.diploma.project.model.entity.AdStatus;
 import com.diploma.project.model.entity.AdType;
 
 import java.util.List;
@@ -27,6 +28,8 @@ public interface AdService {
     AdDto createAd(AdCreateRequest request, String email);
 
     AdDto updateAd(Long id, AdUpdateRequest request, String email);
+
+    AdDto updateAdStatus(Long id, AdStatus status, String email);
 
     void deleteAd(Long id, String email);
 }

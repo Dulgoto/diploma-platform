@@ -9,6 +9,7 @@ import com.diploma.project.model.dto.AdImageDto;
 import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.Ad;
 import com.diploma.project.model.entity.AdImage;
+import com.diploma.project.model.entity.AdStatus;
 import com.diploma.project.model.entity.AdType;
 import com.diploma.project.model.entity.Role;
 import com.diploma.project.model.entity.User;
@@ -130,11 +131,12 @@ public class AdServiceImpl implements AdService {
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
         validateAdTypeForUserRole(request.getType(), owner.getRole());
         Ad ad = new Ad();
+        ad.setStatus(AdStatus.ACTIVE);
         ad.setTitle(request.getTitle());
         ad.setDescription(request.getDescription());
         ad.setPrice(request.getPrice());
         ad.setType(request.getType());
-        AdCategoryValidation.validate(request.getCategory());
+        AdCategoryValidation.validate(request.getCategory(), request.getType());
         ad.setCategory(request.getCategory().trim());
         ad.setKeywords(request.getKeywords());
         ad.setOwner(owner);
@@ -160,12 +162,35 @@ public class AdServiceImpl implements AdService {
         existing.setDescription(request.getDescription());
         existing.setPrice(request.getPrice());
         existing.setType(request.getType());
-        AdCategoryValidation.validate(request.getCategory());
+        if (!isStatusValidForAdType(request.getType(), existing.getStatus())) {
+            existing.setStatus(AdStatus.ACTIVE);
+        }
+        AdCategoryValidation.validate(request.getCategory(), request.getType());
         existing.setCategory(request.getCategory().trim());
         existing.setKeywords(request.getKeywords());
         replaceImages(existing, request.getImageKeys());
         Ad saved = adRepository.save(existing);
         return toAdDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public AdDto updateAdStatus(Long id, AdStatus status, String email) {
+        Ad ad = adRepository.findById(id).orElseThrow(() -> new NotFoundException("Ad not found"));
+        User currentUser =
+                userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+
+        boolean isOwner = ad.getOwner() != null && ad.getOwner().getEmail().equals(email);
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+        if (!isOwner && !isAdmin) {
+            throw new ForbiddenException("You are not allowed to update this ad status");
+        }
+
+        validateStatusForAdType(ad.getType(), status);
+
+        ad.setStatus(status);
+        return toAdDto(adRepository.save(ad));
     }
 
     @Override
@@ -176,6 +201,45 @@ public class AdServiceImpl implements AdService {
             throw new ForbiddenException("You are not the owner of this ad");
         }
         adRepository.delete(ad);
+    }
+
+    private static boolean isStatusValidForAdType(AdType type, AdStatus status) {
+        if (type == null || status == null) {
+            return false;
+        }
+        if (type == AdType.SERVICE_REQUEST) {
+            return status == AdStatus.ACTIVE || status == AdStatus.COMPLETED;
+        }
+        if (type == AdType.SERVICE_OFFER || type == AdType.PRODUCT_SALE) {
+            return status == AdStatus.ACTIVE || status == AdStatus.INACTIVE;
+        }
+        return false;
+    }
+
+    private static void validateStatusForAdType(AdType type, AdStatus status) {
+        if (status == null) {
+            throw new BadRequestException("Ad status is required");
+        }
+        if (type == null) {
+            throw new BadRequestException("Ad type is required");
+        }
+
+        if (type == AdType.SERVICE_REQUEST) {
+            if (status != AdStatus.ACTIVE && status != AdStatus.COMPLETED) {
+                throw new BadRequestException("Service request ads can only be active or completed");
+            }
+            return;
+        }
+
+        if (type == AdType.SERVICE_OFFER || type == AdType.PRODUCT_SALE) {
+            if (status != AdStatus.ACTIVE && status != AdStatus.INACTIVE) {
+                throw new BadRequestException(
+                        "Service offer and product sale ads can only be active or inactive");
+            }
+            return;
+        }
+
+        throw new BadRequestException("Unsupported ad type");
     }
 
     private static void validateAdTypeForUserRole(AdType type, Role role) {
@@ -191,8 +255,11 @@ public class AdServiceImpl implements AdService {
         if (role == Role.CLIENT && type != AdType.SERVICE_REQUEST) {
             throw new BadRequestException("Clients can only create service request ads");
         }
-        if (role == Role.SERVICE_PROVIDER && type != AdType.SERVICE_OFFER) {
-            throw new BadRequestException("Service providers can only create service offer ads");
+        if (role == Role.SERVICE_PROVIDER
+                && type != AdType.SERVICE_OFFER
+                && type != AdType.PRODUCT_SALE) {
+            throw new BadRequestException(
+                    "Service providers can only create service offer or product sale ads");
         }
     }
 
@@ -259,6 +326,7 @@ public class AdServiceImpl implements AdService {
         dto.setLongitude(ad.getLongitude());
         dto.setLocation(ad.getLocation());
         dto.setType(ad.getType());
+        dto.setStatus(ad.getStatus());
         dto.setCategory(ad.getCategory());
         dto.setKeywords(ad.getKeywords());
         dto.setCreatedAt(ad.getCreatedAt());

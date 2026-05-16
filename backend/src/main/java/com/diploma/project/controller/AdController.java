@@ -2,6 +2,7 @@ package com.diploma.project.controller;
 
 import com.diploma.project.model.dto.AdCreateRequest;
 import com.diploma.project.model.dto.AdDto;
+import com.diploma.project.model.dto.AdStatusUpdateRequest;
 import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.AdType;
 import com.diploma.project.service.AdService;
@@ -65,6 +66,15 @@ public class AdController {
             Authentication authentication) {
         String email = authentication.getName();
         return ResponseEntity.ok(adService.updateAd(id, request, email));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<AdDto> updateAdStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody AdStatusUpdateRequest request,
+            Authentication authentication) {
+        String email = authentication.getName();
+        return ResponseEntity.ok(adService.updateAdStatus(id, request.getStatus(), email));
     }
 
     @DeleteMapping("/{id}")

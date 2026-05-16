@@ -73,6 +73,25 @@ export async function put(path, body) {
   return data;
 }
 
+export async function patch(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await parseResponse(res);
+  if (!res.ok) {
+    const err = new Error(res.statusText || "Request failed");
+    err.status = res.status;
+    err.body = data;
+    throw err;
+  }
+  return data;
+}
+
 export async function del(path) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "DELETE",

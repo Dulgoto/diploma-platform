@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { post, uploadFile } from "../api/apiClient.js";
-import { AD_CATEGORIES, isValidAdCategory } from "../constants/adCategories.js";
+import { getCategoriesForAdType, isValidAdCategory } from "../constants/adCategories.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const MAX_IMAGES = 10;
@@ -11,10 +11,14 @@ function getAllowedAdTypes(role) {
     return [{ value: "SERVICE_REQUEST", label: "Търся услуга" }];
   }
   if (role === "SERVICE_PROVIDER") {
-    return [{ value: "SERVICE_OFFER", label: "Предлагам услуга" }];
+    return [
+      { value: "SERVICE_OFFER", label: "Предлагам услуга" },
+      { value: "PRODUCT_SALE", label: "Продавам стока" },
+    ];
   }
   if (role === "ADMIN") {
     return [
+      { value: "PRODUCT_SALE", label: "Продавам стока" },
       { value: "SERVICE_OFFER", label: "Предлагам услуга" },
       { value: "SERVICE_REQUEST", label: "Търся услуга" },
     ];
@@ -46,6 +50,13 @@ export default function PostAd() {
   imageItemsRef.current = imageItems;
 
   const allowedAdTypes = useMemo(() => getAllowedAdTypes(user?.role), [user?.role]);
+  const availableCategories = useMemo(() => getCategoriesForAdType(type), [type]);
+
+  useEffect(() => {
+    if (category && !isValidAdCategory(category, type)) {
+      setCategory("");
+    }
+  }, [category, type]);
 
   useEffect(() => {
     if (allowedAdTypes.length === 1) {
@@ -150,7 +161,7 @@ export default function PostAd() {
             setError("Нямате право да публикувате този тип обява.");
             return;
           }
-          if (!category || !isValidAdCategory(category)) {
+          if (!category || !isValidAdCategory(category, type)) {
             setError("Моля, изберете валидна категория.");
             return;
           }
@@ -223,23 +234,6 @@ export default function PostAd() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="ad-price" className="block text-sm font-medium text-slate-700">
-              Цена (€) <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="ad-price"
-              type="number"
-              min={0}
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-              disabled={loading}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-              placeholder="0"
-            />
-          </div>
-          <div>
             <label htmlFor="ad-type" className="block text-sm font-medium text-slate-700">
               Тип <span className="text-red-500">*</span>
             </label>
@@ -271,9 +265,6 @@ export default function PostAd() {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="ad-category" className="block text-sm font-medium text-slate-700">
               Категория <span className="text-red-500">*</span>
@@ -283,18 +274,38 @@ export default function PostAd() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
-              disabled={loading}
+              disabled={loading || !type}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
             >
               <option value="" disabled>
-                Изберете категория
+                {!type ? "Първо изберете тип" : "Изберете категория"}
               </option>
-              {AD_CATEGORIES.map((cat) => (
+              {availableCategories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="ad-price" className="block text-sm font-medium text-slate-700">
+              Цена (€) <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="ad-price"
+              type="number"
+              min={0}
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              required
+              disabled={loading}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
+              placeholder="0"
+            />
           </div>
           <div>
             <label htmlFor="ad-keywords" className="block text-sm font-medium text-slate-700">

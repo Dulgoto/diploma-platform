@@ -11,6 +11,38 @@ const AD_TYPE_LABELS = {
   SERVICE_REQUEST: "Търсене на услуга",
 };
 
+const AD_STATUS_LABELS = {
+  ACTIVE: "Активна",
+  COMPLETED: "Изпълнена",
+  INACTIVE: "Вече не е активна",
+};
+
+function statusBadgeClass(status) {
+  if (status === "ACTIVE") {
+    return "bg-emerald-50 text-emerald-800 border-emerald-200";
+  }
+  if (status === "COMPLETED") {
+    return "bg-sky-50 text-sky-800 border-sky-200";
+  }
+  if (status === "INACTIVE") {
+    return "bg-slate-100 text-slate-700 border-slate-200";
+  }
+  return "bg-slate-50 text-slate-600 border-slate-200";
+}
+
+function getOwnerSectionTitle(type) {
+  if (type === "SERVICE_REQUEST") {
+    return "Публикувал";
+  }
+  if (type === "SERVICE_OFFER") {
+    return "Доставчик";
+  }
+  if (type === "PRODUCT_SALE") {
+    return "Продавач";
+  }
+  return "Продавач";
+}
+
 function formatPriceEur(price) {
   if (price == null || Number.isNaN(Number(price))) {
     return "— €";
@@ -142,6 +174,8 @@ export default function AdDetails() {
   const isOwner =
     user?.id != null && ad?.ownerId != null && Number(user.id) === Number(ad.ownerId);
 
+  const statusLabel = ad?.status ? AD_STATUS_LABELS[ad.status] || ad.status : "—";
+
   return (
     <div className="space-y-6">
       <Link to="/ads" className="text-sm font-medium text-emerald-700 hover:underline">
@@ -210,6 +244,16 @@ export default function AdDetails() {
                 <div>
                   <dt className="text-slate-400">Тип</dt>
                   <dd className="font-medium text-slate-900">{typeLabel}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-400">Статус</dt>
+                  <dd>
+                    <span
+                      className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(ad.status)}`}
+                    >
+                      {statusLabel}
+                    </span>
+                  </dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-slate-400">Локация</dt>
@@ -331,7 +375,7 @@ export default function AdDetails() {
 
           <aside className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)]">
-              <h2 className="text-sm font-semibold text-slate-900">Продавач</h2>
+              <h2 className="text-sm font-semibold text-slate-900">{getOwnerSectionTitle(ad.type)}</h2>
               <div className="mt-4 flex items-start gap-3">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">
                   {(ad.ownerName || "?").slice(0, 1).toUpperCase()}
