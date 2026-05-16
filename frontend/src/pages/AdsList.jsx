@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api/apiClient.js";
+import AdsMap from "../components/AdsMap.jsx";
 import LocationFilterPicker, { getSettlementNamesForRegion } from "../components/LocationFilterPicker.jsx";
 import { AD_CATEGORIES, getCategoriesForAdType, isValidAdCategory } from "../constants/adCategories.js";
 import { getImageUrl } from "../utils/imageUtils.js";
@@ -233,6 +234,7 @@ export default function AdsList() {
   const [minPrice, setMinPrice] = useState(() => searchParams.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(() => searchParams.get("maxPrice") ?? "");
   const [sortBy, setSortBy] = useState(() => parseSortFromUrl(searchParams.get("sort")));
+  const [showMap, setShowMap] = useState(false);
 
   const availableCategories = useMemo(() => {
     if (selectedType) {
@@ -609,11 +611,20 @@ export default function AdsList() {
               ) : null}
             </div>
           </div>
-          <p className="mt-3 text-sm text-slate-500">
-            Показани {filteredAds.length} активни обяви
-          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-slate-500">Показани {filteredAds.length} активни обяви</p>
+            <button
+              type="button"
+              onClick={() => setShowMap((v) => !v)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              {showMap ? "Скрий карта" : "Покажи карта"}
+            </button>
+          </div>
         </section>
       ) : null}
+
+      {!loading && !error && showMap ? <AdsMap ads={filteredAds} /> : null}
 
       {loading ? (
         <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600 shadow-sm">
