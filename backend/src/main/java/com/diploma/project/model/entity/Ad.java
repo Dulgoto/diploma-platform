@@ -42,6 +42,11 @@ public class Ad {
     @Column(nullable = false)
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING_APPROVAL;
 
+    @Column(length = 1000)
+    private String approvalMessage;
+
+    private LocalDateTime reviewedAt;
+
     private String category;
     private String keywords;
 

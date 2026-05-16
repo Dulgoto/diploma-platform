@@ -65,7 +65,8 @@ public class AdminController {
             Authentication authentication) {
         String adminEmail = authentication.getName();
         return ResponseEntity.ok(
-                adminService.updateAdApprovalStatus(id, request.getApprovalStatus(), adminEmail));
+                adminService.updateAdApprovalStatus(
+                        id, request.getApprovalStatus(), request.getMessage(), adminEmail));
     }
 
     @DeleteMapping("/ads/{id}")

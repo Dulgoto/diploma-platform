@@ -145,6 +145,9 @@ function AdminAdsTab() {
   const [error, setError] = useState("");
   const [busyAdId, setBusyAdId] = useState(null);
   const [approvalFilter, setApprovalFilter] = useState("PENDING_APPROVAL");
+  const [rejectingAdId, setRejectingAdId] = useState(null);
+  const [rejectionMessage, setRejectionMessage] = useState("");
+  const [approvingAdId, setApprovingAdId] = useState(null);
 
   const fetchAds = useCallback(() => {
     setLoading(true);
@@ -188,11 +191,12 @@ function AdminAdsTab() {
     }
   }
 
-  async function handleApprovalChange(adId, nextApprovalStatus) {
+  async function handleApprovalChange(adId, nextApprovalStatus, message = "") {
     setBusyAdId(adId);
     try {
       const updated = await patch(`/api/admin/ads/${adId}/approval`, {
         approvalStatus: nextApprovalStatus,
+        message,
       });
       setAds((prev) => prev.map((ad) => (ad.id === adId ? updated : ad)));
     } catch (err) {
@@ -200,6 +204,41 @@ function AdminAdsTab() {
     } finally {
       setBusyAdId(null);
     }
+  }
+
+  function handleReject(adId) {
+    setRejectingAdId(adId);
+    setRejectionMessage("");
+  }
+
+  function closeRejectModal() {
+    setRejectingAdId(null);
+    setRejectionMessage("");
+  }
+
+  async function confirmReject() {
+    if (rejectingAdId == null) {
+      return;
+    }
+    const message = rejectionMessage.trim() === "" ? "" : rejectionMessage.trim();
+    await handleApprovalChange(rejectingAdId, "REJECTED", message);
+    closeRejectModal();
+  }
+
+  function handleApprove(adId) {
+    setApprovingAdId(adId);
+  }
+
+  function closeApproveModal() {
+    setApprovingAdId(null);
+  }
+
+  async function confirmApprove() {
+    if (approvingAdId == null) {
+      return;
+    }
+    await handleApprovalChange(approvingAdId, "APPROVED");
+    closeApproveModal();
   }
 
   const pendingCount = ads.filter(
@@ -406,13 +445,7 @@ function AdminAdsTab() {
                                 disabled={disabled}
                                 title="Одобри"
                                 aria-label="Одобри"
-                                onClick={() => {
-                                  if (
-                                    window.confirm("Да одобрите ли тази обява?")
-                                  ) {
-                                    handleApprovalChange(ad.id, "APPROVED");
-                                  }
-                                }}
+                                onClick={() => handleApprove(ad.id)}
                                 className={`${TABLE_ICON_BUTTON_CLASS} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
                               >
                                 ✓
@@ -423,15 +456,7 @@ function AdminAdsTab() {
                                 disabled={disabled}
                                 title="Отхвърли"
                                 aria-label="Отхвърли"
-                                onClick={() => {
-                                  if (
-                                    window.confirm(
-                                      "Сигурни ли сте, че искате да отхвърлите тази обява?",
-                                    )
-                                  ) {
-                                    handleApprovalChange(ad.id, "REJECTED");
-                                  }
-                                }}
+                                onClick={() => handleReject(ad.id)}
                                 className={`${TABLE_ICON_BUTTON_CLASS} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
                               >
                                 ✕
@@ -451,13 +476,7 @@ function AdminAdsTab() {
                               <button
                                 type="button"
                                 disabled={disabled}
-                                onClick={() => {
-                                  if (
-                                    window.confirm("Да одобрите ли тази обява?")
-                                  ) {
-                                    handleApprovalChange(ad.id, "APPROVED");
-                                  }
-                                }}
+                                onClick={() => handleApprove(ad.id)}
                                 className="w-24 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
                               >
                                 Одобри
@@ -576,11 +595,7 @@ function AdminAdsTab() {
                           disabled={disabled}
                           title="Одобри"
                           aria-label="Одобри"
-                          onClick={() => {
-                            if (window.confirm("Да одобрите ли тази обява?")) {
-                              handleApprovalChange(ad.id, "APPROVED");
-                            }
-                          }}
+                          onClick={() => handleApprove(ad.id)}
                           className={`${TABLE_ICON_BUTTON_CLASS} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
                         >
                           ✓
@@ -590,15 +605,7 @@ function AdminAdsTab() {
                           disabled={disabled}
                           title="Отхвърли"
                           aria-label="Отхвърли"
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                "Сигурни ли сте, че искате да отхвърлите тази обява?",
-                              )
-                            ) {
-                              handleApprovalChange(ad.id, "REJECTED");
-                            }
-                          }}
+                          onClick={() => handleReject(ad.id)}
                           className={`${TABLE_ICON_BUTTON_CLASS} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
                         >
                           ✕
@@ -617,11 +624,7 @@ function AdminAdsTab() {
                         <button
                           type="button"
                           disabled={disabled}
-                          onClick={() => {
-                            if (window.confirm("Да одобрите ли тази обява?")) {
-                              handleApprovalChange(ad.id, "APPROVED");
-                            }
-                          }}
+                          onClick={() => handleApprove(ad.id)}
                           className="w-24 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
                         >
                           Одобри
@@ -643,6 +646,108 @@ function AdminAdsTab() {
           </div>
         </>
       )}
+
+      {approvingAdId !== null ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="approve-ad-title"
+          onClick={() => {
+            if (busyAdId !== approvingAdId) {
+              closeApproveModal();
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="approve-ad-title"
+              className="text-base font-semibold text-slate-900"
+            >
+              Одобряване на обява
+            </h3>
+            <p className="mt-3 text-sm text-slate-600">
+              Сигурни ли сте, че искате да одобрите тази обява?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={busyAdId === approvingAdId}
+                onClick={closeApproveModal}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отказ
+              </button>
+              <button
+                type="button"
+                disabled={busyAdId === approvingAdId}
+                onClick={() => {
+                  void confirmApprove();
+                }}
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+              >
+                Одобри
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {rejectingAdId !== null ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-ad-title"
+          onClick={closeRejectModal}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="reject-ad-title"
+              className="text-base font-semibold text-slate-900"
+            >
+              Отхвърляне на обява
+            </h3>
+            <label className="mt-4 block text-sm font-medium text-slate-700">
+              Причина (по избор)
+              <textarea
+                rows={4}
+                value={rejectionMessage}
+                disabled={busyAdId === rejectingAdId}
+                onChange={(e) => setRejectionMessage(e.target.value)}
+                placeholder="Обявата не беше одобрена. Моля, направете корекция или цялостна промяна."
+                className="mt-1.5 w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={busyAdId === rejectingAdId}
+                onClick={closeRejectModal}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отказ
+              </button>
+              <button
+                type="button"
+                disabled={busyAdId === rejectingAdId}
+                onClick={() => {
+                  void confirmReject();
+                }}
+                className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-60"
+              >
+                Отхвърли
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

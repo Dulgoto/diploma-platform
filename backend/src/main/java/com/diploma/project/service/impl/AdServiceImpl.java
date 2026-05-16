@@ -190,6 +190,8 @@ public class AdServiceImpl implements AdService {
         existing.setCategory(request.getCategory().trim());
         existing.setKeywords(request.getKeywords());
         existing.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        existing.setApprovalMessage(null);
+        existing.setReviewedAt(null);
         replaceImages(existing, request.getImageKeys());
         Ad saved = adRepository.save(existing);
         notifyAdminsForPendingAd(saved, "Редактирана обява чака повторно одобрение");
@@ -361,6 +363,8 @@ public class AdServiceImpl implements AdService {
         dto.setType(ad.getType());
         dto.setStatus(ad.getStatus());
         dto.setApprovalStatus(ad.getApprovalStatus());
+        dto.setApprovalMessage(ad.getApprovalMessage());
+        dto.setReviewedAt(ad.getReviewedAt());
         dto.setCategory(ad.getCategory());
         dto.setKeywords(ad.getKeywords());
         dto.setCreatedAt(ad.getCreatedAt());

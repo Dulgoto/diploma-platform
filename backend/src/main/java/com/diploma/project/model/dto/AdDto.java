@@ -19,6 +19,8 @@ public class AdDto {
     private AdType type;
     private AdStatus status;
     private ApprovalStatus approvalStatus;
+    private String approvalMessage;
+    private LocalDateTime reviewedAt;
     private String category;
     private String keywords;
     private Long ownerId;
@@ -129,6 +131,22 @@ public class AdDto {
 
     public void setApprovalStatus(ApprovalStatus approvalStatus) {
         this.approvalStatus = approvalStatus;
+    }
+
+    public String getApprovalMessage() {
+        return approvalMessage;
+    }
+
+    public void setApprovalMessage(String approvalMessage) {
+        this.approvalMessage = approvalMessage;
+    }
+
+    public LocalDateTime getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public void setReviewedAt(LocalDateTime reviewedAt) {
+        this.reviewedAt = reviewedAt;
     }
 
     public String getCategory() {

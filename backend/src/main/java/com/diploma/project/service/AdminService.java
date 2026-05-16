@@ -20,7 +20,8 @@ public interface AdminService {
 
     AdDto updateAdStatus(Long adId, AdStatus status, String adminEmail);
 
-    AdDto updateAdApprovalStatus(Long adId, ApprovalStatus approvalStatus, String adminEmail);
+    AdDto updateAdApprovalStatus(
+            Long adId, ApprovalStatus approvalStatus, String message, String adminEmail);
 
     void deleteAd(Long adId, String adminEmail);
 

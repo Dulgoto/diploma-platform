@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -95,30 +96,46 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
-    public AdDto updateAdApprovalStatus(Long adId, ApprovalStatus approvalStatus, String adminEmail) {
+    public AdDto updateAdApprovalStatus(
+            Long adId, ApprovalStatus approvalStatus, String message, String adminEmail) {
         validateAdmin(adminEmail);
         if (approvalStatus == null) {
             throw new BadRequestException("Approval status is required");
         }
         Ad ad = adRepository.findById(adId).orElseThrow(() -> new NotFoundException("Ad not found"));
         ad.setApprovalStatus(approvalStatus);
+
+        if (approvalStatus == ApprovalStatus.PENDING_APPROVAL) {
+            ad.setReviewedAt(null);
+        } else {
+            ad.setReviewedAt(LocalDateTime.now());
+        }
+
+        String adTitle = ad.getTitle() != null ? ad.getTitle() : "Без заглавие";
+
+        if (approvalStatus == ApprovalStatus.APPROVED) {
+            ad.setApprovalMessage(null);
+        } else if (approvalStatus == ApprovalStatus.REJECTED) {
+            String fallback =
+                    "Обявата \""
+                            + adTitle
+                            + "\" не беше одобрена. Моля, направете корекция или цялостна промяна.";
+            String finalMessage =
+                    message != null && !message.isBlank() ? message.trim() : fallback;
+            ad.setApprovalMessage(finalMessage);
+        } else if (approvalStatus == ApprovalStatus.PENDING_APPROVAL) {
+            ad.setApprovalMessage(null);
+        }
+
         Ad saved = adRepository.save(ad);
 
-        if (approvalStatus == ApprovalStatus.APPROVED || approvalStatus == ApprovalStatus.REJECTED) {
+        if (approvalStatus == ApprovalStatus.REJECTED) {
             User owner = saved.getOwner();
             if (owner != null) {
-                String adTitle = saved.getTitle() != null ? saved.getTitle() : "Без заглавие";
-                if (approvalStatus == ApprovalStatus.APPROVED) {
-                    notificationService.createNotification(
-                            owner.getId(),
-                            "Обявата е одобрена",
-                            "Обявата \"" + adTitle + "\" беше одобрена.");
-                } else {
-                    notificationService.createNotification(
-                            owner.getId(),
-                            "Обявата е отхвърлена",
-                            "Обявата \"" + adTitle + "\" беше отхвърлена.");
-                }
+                notificationService.createNotification(
+                        owner.getId(),
+                        "Обявата е отхвърлена",
+                        saved.getApprovalMessage());
             }
         }
 
@@ -225,6 +242,8 @@ public class AdminServiceImpl implements AdminService {
         dto.setKeywords(ad.getKeywords());
         dto.setStatus(ad.getStatus());
         dto.setApprovalStatus(ad.getApprovalStatus());
+        dto.setApprovalMessage(ad.getApprovalMessage());
+        dto.setReviewedAt(ad.getReviewedAt());
         dto.setCreatedAt(ad.getCreatedAt());
         if (ad.getOwner() != null) {
             dto.setOwnerId(ad.getOwner().getId());
