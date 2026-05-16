@@ -1,5 +1,6 @@
 package com.diploma.project.model.dto;
 
+import com.diploma.project.model.entity.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -27,6 +28,7 @@ public class UserRegisterRequest {
     private Double longitude;
     private String description;
     private String avatarKey;
+    private Role role;
 
     public UserRegisterRequest() {
     }
@@ -101,5 +103,13 @@ public class UserRegisterRequest {
 
     public void setAvatarKey(String avatarKey) {
         this.avatarKey = avatarKey;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 }

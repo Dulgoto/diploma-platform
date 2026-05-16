@@ -1,15 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { post, uploadFile } from "../api/apiClient.js";
 import { AD_CATEGORIES, isValidAdCategory } from "../constants/adCategories.js";
-
-const AD_TYPES = [
-  { value: "PRODUCT_SALE", label: "Продавам стока" },
-  { value: "SERVICE_OFFER", label: "Предлагам услуга" },
-  { value: "SERVICE_REQUEST", label: "Търся услуга" },
-];
+import { useAuth } from "../context/AuthContext.jsx";
 
 const MAX_IMAGES = 10;
+
+function getAllowedAdTypes(role) {
+  if (role === "CLIENT") {
+    return [{ value: "SERVICE_REQUEST", label: "Търся услуга" }];
+  }
+  if (role === "SERVICE_PROVIDER") {
+    return [{ value: "SERVICE_OFFER", label: "Предлагам услуга" }];
+  }
+  if (role === "ADMIN") {
+    return [
+      { value: "SERVICE_OFFER", label: "Предлагам услуга" },
+      { value: "SERVICE_REQUEST", label: "Търся услуга" },
+    ];
+  }
+  return [];
+}
 
 function errorMessage(err, fallback) {
   const m = err?.body?.message;
@@ -18,6 +29,7 @@ function errorMessage(err, fallback) {
 
 export default function PostAd() {
   const navigate = useNavigate();
+  const { user, authLoading } = useAuth();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -32,6 +44,17 @@ export default function PostAd() {
   const nextIdRef = useRef(0);
   const imageItemsRef = useRef([]);
   imageItemsRef.current = imageItems;
+
+  const allowedAdTypes = useMemo(() => getAllowedAdTypes(user?.role), [user?.role]);
+
+  useEffect(() => {
+    if (allowedAdTypes.length === 1) {
+      const only = allowedAdTypes[0].value;
+      if (!type || !allowedAdTypes.some((opt) => opt.value === type)) {
+        setType(only);
+      }
+    }
+  }, [allowedAdTypes, type]);
 
   useEffect(() => {
     return () => {
@@ -89,6 +112,12 @@ export default function PostAd() {
         </p>
       ) : null}
 
+      {!authLoading && allowedAdTypes.length === 0 ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="alert">
+          Неуспешно определяне на позволените типове обяви. Моля, влезте отново.
+        </p>
+      ) : null}
+
       <form
         className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-[var(--shadow-card)] sm:p-8"
         onSubmit={async (e) => {
@@ -115,6 +144,10 @@ export default function PostAd() {
           }
           if (!type) {
             setError("Моля, изберете тип на обявата.");
+            return;
+          }
+          if (!allowedAdTypes.some((opt) => opt.value === type)) {
+            setError("Нямате право да публикувате този тип обява.");
             return;
           }
           if (!category || !isValidAdCategory(category)) {
@@ -210,23 +243,33 @@ export default function PostAd() {
             <label htmlFor="ad-type" className="block text-sm font-medium text-slate-700">
               Тип <span className="text-red-500">*</span>
             </label>
-            <select
-              id="ad-type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              required
-              disabled={loading}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-            >
-              <option value="" disabled>
-                Изберете тип
-              </option>
-              {AD_TYPES.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+            {allowedAdTypes.length > 1 ? (
+              <select
+                id="ad-type"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                required
+                disabled={loading || authLoading}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
+              >
+                <option value="" disabled>
+                  Изберете тип
                 </option>
-              ))}
-            </select>
+                {allowedAdTypes.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                id="ad-type"
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+                aria-readonly="true"
+              >
+                {allowedAdTypes[0]?.label || "—"}
+              </div>
+            )}
           </div>
         </div>
 

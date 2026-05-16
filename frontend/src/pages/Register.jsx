@@ -17,6 +17,19 @@ const AVATAR_OPTIONS = [
   { value: "avatar-5.png", label: "Аватар 5" },
 ];
 
+const ROLE_OPTIONS = [
+  {
+    value: "CLIENT",
+    label: "Клиент",
+    description: "Търся услуги и мога да публикувам заявки за услуга.",
+  },
+  {
+    value: "SERVICE_PROVIDER",
+    label: "Доставчик на услуги",
+    description: "Предлагам услуги и мога да публикувам обяви за услуги.",
+  },
+];
+
 export default function Register() {
   const navigate = useNavigate();
 
@@ -24,6 +37,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("");
   const [locationVal, setLocationVal] = useState("");
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
@@ -49,6 +63,10 @@ export default function Register() {
           onSubmit={async (e) => {
             e.preventDefault();
             setError("");
+            if (!role) {
+              setError("Моля, изберете тип профил.");
+              return;
+            }
             setLoading(true);
             try {
               const payload = {
@@ -56,6 +74,7 @@ export default function Register() {
                 email,
                 password,
                 confirmPassword,
+                role,
               };
               const loc = locationVal.trim();
               if (loc) {
@@ -140,6 +159,37 @@ export default function Register() {
               disabled={loading}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
             />
+          </div>
+          <div>
+            <span className="block text-sm font-medium text-slate-700">Тип профил</span>
+            <div className="mt-2 space-y-2">
+              {ROLE_OPTIONS.map((opt) => {
+                const selected = role === opt.value;
+                return (
+                  <label
+                    key={opt.value}
+                    className={`block cursor-pointer rounded-xl border p-4 transition-colors ${
+                      selected
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="reg-role"
+                      value={opt.value}
+                      checked={selected}
+                      onChange={() => setRole(opt.value)}
+                      required
+                      disabled={loading}
+                      className="sr-only"
+                    />
+                    <span className="block text-sm font-semibold text-slate-900">{opt.label}</span>
+                    <span className="mt-1 block text-xs text-slate-500">{opt.description}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">

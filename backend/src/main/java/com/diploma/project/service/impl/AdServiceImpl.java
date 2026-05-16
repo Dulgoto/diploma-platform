@@ -10,6 +10,7 @@ import com.diploma.project.model.dto.AdUpdateRequest;
 import com.diploma.project.model.entity.Ad;
 import com.diploma.project.model.entity.AdImage;
 import com.diploma.project.model.entity.AdType;
+import com.diploma.project.model.entity.Role;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.AdRepository;
 import com.diploma.project.repository.UserRepository;
@@ -127,6 +128,7 @@ public class AdServiceImpl implements AdService {
         validateImageKeys(request.getImageKeys());
         User owner =
                 userRepository.findByEmail(email).orElseThrow(() -> new NotFoundException("User not found"));
+        validateAdTypeForUserRole(request.getType(), owner.getRole());
         Ad ad = new Ad();
         ad.setTitle(request.getTitle());
         ad.setDescription(request.getDescription());
@@ -153,6 +155,7 @@ public class AdServiceImpl implements AdService {
         if (existing.getOwner() == null || !existing.getOwner().getEmail().equals(email)) {
             throw new ForbiddenException("You are not the owner of this ad");
         }
+        validateAdTypeForUserRole(request.getType(), existing.getOwner().getRole());
         existing.setTitle(request.getTitle());
         existing.setDescription(request.getDescription());
         existing.setPrice(request.getPrice());
@@ -173,6 +176,24 @@ public class AdServiceImpl implements AdService {
             throw new ForbiddenException("You are not the owner of this ad");
         }
         adRepository.delete(ad);
+    }
+
+    private static void validateAdTypeForUserRole(AdType type, Role role) {
+        if (type == null) {
+            throw new BadRequestException("Ad type is required");
+        }
+        if (role == null) {
+            throw new ForbiddenException("User role is missing");
+        }
+        if (role == Role.ADMIN) {
+            return;
+        }
+        if (role == Role.CLIENT && type != AdType.SERVICE_REQUEST) {
+            throw new BadRequestException("Clients can only create service request ads");
+        }
+        if (role == Role.SERVICE_PROVIDER && type != AdType.SERVICE_OFFER) {
+            throw new BadRequestException("Service providers can only create service offer ads");
+        }
     }
 
     private static void validateImageKeys(List<String> imageKeys) {

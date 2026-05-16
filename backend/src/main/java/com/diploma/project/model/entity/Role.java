@@ -1,6 +1,7 @@
 package com.diploma.project.model.entity;
 
 public enum Role {
-    USER,
+    CLIENT,
+    SERVICE_PROVIDER,
     ADMIN
 }

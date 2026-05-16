@@ -1,17 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { get, put, uploadFile } from "../api/apiClient.js";
 import { getImageUrl } from "../utils/imageUtils.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { AD_CATEGORIES, isValidAdCategory, resolveAdCategory } from "../constants/adCategories.js";
 
-const AD_TYPES = [
-  { value: "PRODUCT_SALE", label: "Продавам стока" },
-  { value: "SERVICE_OFFER", label: "Предлагам услуга" },
-  { value: "SERVICE_REQUEST", label: "Търся услуга" },
-];
-
 const MAX_IMAGES = 10;
+
+function getAllowedAdTypes(role) {
+  if (role === "CLIENT") {
+    return [{ value: "SERVICE_REQUEST", label: "Търся услуга" }];
+  }
+  if (role === "SERVICE_PROVIDER") {
+    return [{ value: "SERVICE_OFFER", label: "Предлагам услуга" }];
+  }
+  if (role === "ADMIN") {
+    return [
+      { value: "SERVICE_OFFER", label: "Предлагам услуга" },
+      { value: "SERVICE_REQUEST", label: "Търся услуга" },
+    ];
+  }
+  return [];
+}
 
 function errorMessage(err, fallback) {
   const m = err?.body?.message;
@@ -32,7 +42,7 @@ export default function EditAd() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [type, setType] = useState("PRODUCT_SALE");
+  const [type, setType] = useState("");
   const [category, setCategory] = useState("");
   const [keywords, setKeywords] = useState("");
   const [existingImages, setExistingImages] = useState([]);
@@ -43,6 +53,8 @@ export default function EditAd() {
 
   const [submitError, setSubmitError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const allowedAdTypes = useMemo(() => getAllowedAdTypes(user?.role), [user?.role]);
 
   const nextIdRef = useRef(0);
   const newImageItemsRef = useRef([]);
@@ -57,6 +69,12 @@ export default function EditAd() {
       });
     };
   }, []);
+
+  useEffect(() => {
+    if (allowedAdTypes.length === 1 && !type) {
+      setType(allowedAdTypes[0].value);
+    }
+  }, [allowedAdTypes, type]);
 
   useEffect(() => {
     if (!id) {
@@ -86,7 +104,7 @@ export default function EditAd() {
         setTitle(ad.title ?? "");
         setDescription(ad.description ?? "");
         setPrice(ad.price != null ? String(ad.price) : "");
-        setType(ad.type ?? "PRODUCT_SALE");
+        setType(ad.type ?? "");
         setCategory(resolveAdCategory(ad.category));
         setKeywords(ad.keywords ?? "");
         const sorted = [...(ad.images || [])].sort(
@@ -231,6 +249,10 @@ export default function EditAd() {
             setSubmitError("Изберете тип на обявата.");
             return;
           }
+          if (!allowedAdTypes.some((opt) => opt.value === type)) {
+            setSubmitError("Нямате право да използвате този тип обява.");
+            return;
+          }
           if (!category || !isValidAdCategory(category)) {
             setSubmitError("Моля, изберете валидна категория.");
             return;
@@ -328,19 +350,33 @@ export default function EditAd() {
             <label htmlFor="edit-type" className="block text-sm font-medium text-slate-700">
               Тип <span className="text-red-500">*</span>
             </label>
-            <select
-              id="edit-type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              disabled={saving}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
-            >
-              {AD_TYPES.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+            {allowedAdTypes.length > 1 ? (
+              <select
+                id="edit-type"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                required
+                disabled={saving || authLoading}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
+              >
+                <option value="" disabled>
+                  Изберете тип
                 </option>
-              ))}
-            </select>
+                {allowedAdTypes.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div
+                id="edit-type"
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500"
+                aria-readonly="true"
+              >
+                {allowedAdTypes[0]?.label || "—"}
+              </div>
+            )}
           </div>
         </div>
 

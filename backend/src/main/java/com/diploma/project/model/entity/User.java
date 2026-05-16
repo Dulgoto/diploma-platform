@@ -41,7 +41,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role = Role.USER;
+    private Role role = Role.CLIENT;
 
     @Column(nullable = false)
     private Boolean active = true;
@@ -56,7 +56,7 @@ public class User {
             this.averageRating = 0.0;
         }
         if (this.role == null) {
-            this.role = Role.USER;
+            this.role = Role.CLIENT;
         }
         if (this.active == null) {
             this.active = true;

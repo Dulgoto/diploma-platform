@@ -6,6 +6,7 @@ import com.diploma.project.model.dto.AuthResponse;
 import com.diploma.project.model.dto.LoginRequest;
 import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.model.dto.UserRegisterRequest;
+import com.diploma.project.model.entity.Role;
 import com.diploma.project.model.entity.User;
 import com.diploma.project.repository.UserRepository;
 import com.diploma.project.security.JwtService;
@@ -46,6 +47,12 @@ public class AuthServiceImpl implements AuthService {
         user.setDescription(request.getDescription());
         AvatarKeyValidation.validate(request.getAvatarKey());
         user.setAvatarKey(request.getAvatarKey());
+        Role requestedRole = request.getRole();
+        Role resolvedRole = requestedRole != null ? requestedRole : Role.CLIENT;
+        if (resolvedRole == Role.ADMIN) {
+            throw new BadRequestException("Cannot register as admin");
+        }
+        user.setRole(resolvedRole);
         User saved = userRepository.save(user);
         return toPrivateDto(saved);
     }
