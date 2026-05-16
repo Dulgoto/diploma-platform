@@ -6,4 +6,6 @@ import org.springframework.web.multipart.MultipartFile;
 public interface FileStorageService {
 
     UploadResponse storeAdImage(MultipartFile file);
+
+    UploadResponse storeAvatarImage(MultipartFile file);
 }

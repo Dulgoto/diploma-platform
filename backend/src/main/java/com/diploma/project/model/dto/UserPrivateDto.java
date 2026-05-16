@@ -18,6 +18,7 @@ public class UserPrivateDto {
     private Role role;
     private Boolean active;
     private LocalDateTime createdAt;
+    private UserAvatarRequestDto pendingAvatarRequest;
 
     public UserPrivateDto() {
     }
@@ -25,6 +26,13 @@ public class UserPrivateDto {
     public UserPrivateDto(Long id, String email, String name, String location, Double latitude,
                           Double longitude, String description, Double averageRating, String avatarKey, Role role,
                           Boolean active, LocalDateTime createdAt) {
+        this(id, email, name, location, latitude, longitude, description, averageRating, avatarKey, role, active,
+                createdAt, null);
+    }
+
+    public UserPrivateDto(Long id, String email, String name, String location, Double latitude,
+                          Double longitude, String description, Double averageRating, String avatarKey, Role role,
+                          Boolean active, LocalDateTime createdAt, UserAvatarRequestDto pendingAvatarRequest) {
         this.id = id;
         this.email = email;
         this.name = name;
@@ -37,6 +45,7 @@ public class UserPrivateDto {
         this.role = role;
         this.active = active;
         this.createdAt = createdAt;
+        this.pendingAvatarRequest = pendingAvatarRequest;
     }
 
     public Long getId() {
@@ -133,5 +142,13 @@ public class UserPrivateDto {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public UserAvatarRequestDto getPendingAvatarRequest() {
+        return pendingAvatarRequest;
+    }
+
+    public void setPendingAvatarRequest(UserAvatarRequestDto pendingAvatarRequest) {
+        this.pendingAvatarRequest = pendingAvatarRequest;
     }
 }

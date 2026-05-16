@@ -3,9 +3,12 @@ package com.diploma.project.controller;
 import com.diploma.project.model.dto.AdApprovalUpdateRequest;
 import com.diploma.project.model.dto.AdDto;
 import com.diploma.project.model.dto.AdStatusUpdateRequest;
+import com.diploma.project.model.dto.AvatarApprovalUpdateRequest;
 import com.diploma.project.model.dto.ReviewDto;
+import com.diploma.project.model.dto.UserAvatarRequestDto;
 import com.diploma.project.model.dto.UserPrivateDto;
 import com.diploma.project.service.AdminService;
+import com.diploma.project.service.UserAvatarRequestService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,9 +21,12 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final UserAvatarRequestService userAvatarRequestService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(
+            AdminService adminService, UserAvatarRequestService userAvatarRequestService) {
         this.adminService = adminService;
+        this.userAvatarRequestService = userAvatarRequestService;
     }
 
     @GetMapping("/users")
@@ -87,5 +93,22 @@ public class AdminController {
         String adminEmail = authentication.getName();
         adminService.deleteReview(id, adminEmail);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/avatar-requests")
+    public ResponseEntity<List<UserAvatarRequestDto>> getAvatarRequests(Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(userAvatarRequestService.getAllRequests(adminEmail));
+    }
+
+    @PatchMapping("/avatar-requests/{id}/status")
+    public ResponseEntity<UserAvatarRequestDto> updateAvatarRequestStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody AvatarApprovalUpdateRequest request,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(
+                userAvatarRequestService.updateStatus(
+                        id, request.getStatus(), request.getMessage(), adminEmail));
     }
 }

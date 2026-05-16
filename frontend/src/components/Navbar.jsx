@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { put } from "../api/apiClient.js";
+import { put, uploadFile } from "../api/apiClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const linkClass = ({ isActive }) =>
@@ -14,25 +14,44 @@ const linkClass = ({ isActive }) =>
 const dropdownLinkClass =
   "block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900";
 
-const AVATAR_OPTIONS = [
+const PRESET_AVATAR_OPTIONS = [
   { key: null, label: "Стандартен" },
   { key: "avatar-1.png", label: "Аватар 1" },
   { key: "avatar-2.png", label: "Аватар 2" },
   { key: "avatar-3.png", label: "Аватар 3" },
   { key: "avatar-4.png", label: "Аватар 4" },
-  { key: "avatar-5.png", label: "Аватар 5" },
 ];
 
 function avatarUrl(key) {
-  return key ? `/avatars/${key}` : "";
+  if (!key || !key.trim()) {
+    return "";
+  }
+  const trimmed = key.trim();
+  if (trimmed.startsWith("avatars/")) {
+    return `/uploads/${trimmed}`;
+  }
+  if (trimmed.startsWith("avatar-") && trimmed.endsWith(".png")) {
+    return `/avatars/${trimmed}`;
+  }
+  return "";
 }
 
 function isImageAvatar(key) {
-  return typeof key === "string" && key.trim().length > 0;
+  return typeof key === "string" && key.trim().length > 0 && avatarUrl(key) !== "";
 }
 
-function avatarKeyFromUser(key) {
-  return isImageAvatar(key) ? key.trim() : null;
+function presetAvatarKeyFromUser(key) {
+  if (!key || !key.trim()) {
+    return null;
+  }
+  const trimmed = key.trim();
+  if (trimmed.startsWith("avatars/")) {
+    return null;
+  }
+  if (trimmed.startsWith("avatar-") && trimmed.endsWith(".png")) {
+    return trimmed;
+  }
+  return null;
 }
 
 function errorMessage(err, fallback) {
@@ -40,10 +59,14 @@ function errorMessage(err, fallback) {
   return typeof m === "string" && m.trim() ? m : fallback;
 }
 
-function avatarOptionClass(selected) {
+function avatarOptionClass(selected, variant = "default") {
   return [
-    "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 bg-slate-100 transition",
-    selected ? "border-emerald-500 ring-2 ring-emerald-100" : "border-slate-200 hover:border-emerald-200",
+    "relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 bg-slate-100 transition",
+    selected
+      ? "border-emerald-500 ring-2 ring-emerald-100"
+      : variant === "pending"
+        ? "border-amber-300 ring-2 ring-amber-100"
+        : "border-slate-200 hover:border-emerald-200",
   ].join(" ");
 }
 
@@ -53,13 +76,20 @@ export default function Navbar() {
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
   const [selectedAvatarKey, setSelectedAvatarKey] = useState(null);
   const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarSelectionChanged, setAvatarSelectionChanged] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const dropdownRef = useRef(null);
   const avatarDropdownRef = useRef(null);
+  const avatarFileInputRef = useRef(null);
 
   const displayName = user?.name?.trim() ? user.name.trim() : "Профил";
   const avatarLetter =
     user?.name && user.name.trim() ? user.name.trim().charAt(0).toUpperCase() : "?";
+  const pendingAvatarRequest =
+    user?.pendingAvatarRequest?.status === "PENDING_APPROVAL"
+      ? user.pendingAvatarRequest
+      : null;
 
   useEffect(() => {
     if (!isDropdownOpen && !isAvatarMenuOpen) {
@@ -102,7 +132,8 @@ export default function Navbar() {
     setIsDropdownOpen(false);
     setIsAvatarMenuOpen((open) => {
       if (!open) {
-        setSelectedAvatarKey(avatarKeyFromUser(user?.avatarKey));
+        setSelectedAvatarKey(presetAvatarKeyFromUser(user?.avatarKey));
+        setAvatarSelectionChanged(false);
         setAvatarError("");
       }
       return !open;
@@ -115,8 +146,33 @@ export default function Navbar() {
     logout();
   }
 
+  function handleCustomAvatarClick() {
+    avatarFileInputRef.current?.click();
+  }
+
+  async function handleAvatarFileChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    setAvatarUploading(true);
+    setAvatarError("");
+    try {
+      await uploadFile("/api/uploads/avatar", file);
+      if (refreshAccount) {
+        await refreshAccount();
+      }
+      setAvatarSelectionChanged(false);
+    } catch (err) {
+      setAvatarError(errorMessage(err, "Неуспешно качване на аватара."));
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   async function handleSaveAvatar() {
-    if (!user) {
+    if (!user || !avatarSelectionChanged) {
       return;
     }
     setAvatarSaving(true);
@@ -133,6 +189,7 @@ export default function Navbar() {
       if (refreshAccount) {
         await refreshAccount();
       }
+      setAvatarSelectionChanged(false);
       closeAvatarMenu();
     } catch (err) {
       setAvatarError(errorMessage(err, "Неуспешно запазване на аватара."));
@@ -140,6 +197,9 @@ export default function Navbar() {
       setAvatarSaving(false);
     }
   }
+
+  const avatarBusy = avatarSaving || avatarUploading;
+  const saveAvatarDisabled = avatarBusy || !avatarSelectionChanged;
 
   return (
     <header className="sticky top-0 z-[1100] border-b border-slate-200/90 bg-white/95 shadow-sm backdrop-blur">
@@ -202,15 +262,25 @@ export default function Navbar() {
                     className="absolute right-0 top-full z-[1200] mt-2 w-72 origin-top-right rounded-2xl border border-slate-200 bg-white p-4 shadow-lg"
                   >
                     <h3 className="text-sm font-semibold text-slate-900">Избери аватар</h3>
+                    <input
+                      ref={avatarFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarFileChange}
+                    />
                     <div className="mt-3 grid grid-cols-3 gap-3">
-                      {AVATAR_OPTIONS.map((option) => {
+                      {PRESET_AVATAR_OPTIONS.map((option) => {
                         const selected = selectedAvatarKey === option.key;
                         return (
                           <button
                             key={option.key ?? "default"}
                             type="button"
-                            disabled={avatarSaving}
-                            onClick={() => setSelectedAvatarKey(option.key)}
+                            disabled={avatarBusy}
+                            onClick={() => {
+                              setSelectedAvatarKey(option.key);
+                              setAvatarSelectionChanged(true);
+                            }}
                             className="flex flex-col items-center gap-1.5 disabled:opacity-60"
                             aria-label={option.label}
                             aria-pressed={selected}
@@ -223,7 +293,9 @@ export default function Navbar() {
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <span className="text-sm font-semibold text-slate-600">{avatarLetter}</span>
+                                <span className="text-sm font-semibold text-slate-600">
+                                  {avatarLetter}
+                                </span>
                               )}
                             </span>
                             <span className="text-center text-[10px] leading-tight text-slate-600">
@@ -232,12 +304,47 @@ export default function Navbar() {
                           </button>
                         );
                       })}
+                      <button
+                        type="button"
+                        disabled={avatarBusy}
+                        onClick={handleCustomAvatarClick}
+                        className="flex flex-col items-center gap-1.5 disabled:opacity-60"
+                        aria-label="Качи снимка"
+                      >
+                        <span
+                          className={avatarOptionClass(
+                            false,
+                            pendingAvatarRequest ? "pending" : "default",
+                          )}
+                        >
+                          {pendingAvatarRequest?.imageKey ? (
+                            <img
+                              src={avatarUrl(pendingAvatarRequest.imageKey)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : avatarUploading ? (
+                            <span className="text-[10px] font-medium text-slate-500">…</span>
+                          ) : (
+                            <span className="text-lg text-slate-500" aria-hidden>
+                              📷
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-center text-[10px] leading-tight text-slate-600">
+                          {avatarUploading
+                            ? "Качване…"
+                            : pendingAvatarRequest
+                              ? "Изчаква одобрение"
+                              : "Качи снимка"}
+                        </span>
+                      </button>
                     </div>
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={avatarSaving}
+                        disabled={saveAvatarDisabled}
                         onClick={handleSaveAvatar}
                         className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
                       >
@@ -245,7 +352,7 @@ export default function Navbar() {
                       </button>
                       <button
                         type="button"
-                        disabled={avatarSaving}
+                        disabled={avatarBusy}
                         onClick={closeAvatarMenu}
                         className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                       >

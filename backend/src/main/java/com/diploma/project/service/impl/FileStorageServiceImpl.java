@@ -12,17 +12,31 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class FileStorageServiceImpl implements FileStorageService {
 
     private static final String AD_IMAGES_SUBDIR = "ad-images";
+    private static final String AVATARS_SUBDIR = "avatars";
     private static final Path AD_IMAGES_DIR = Paths.get("uploads", AD_IMAGES_SUBDIR);
+    private static final Path AVATARS_DIR = Paths.get("uploads", AVATARS_SUBDIR);
     private static final long MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+    private static final Set<String> ALLOWED_EXTENSIONS =
+            Set.of(".jpg", ".jpeg", ".png", ".gif", ".webp");
 
     @Override
     public UploadResponse storeAdImage(MultipartFile file) {
+        return storeImage(file, AD_IMAGES_SUBDIR, AD_IMAGES_DIR);
+    }
+
+    @Override
+    public UploadResponse storeAvatarImage(MultipartFile file) {
+        return storeImage(file, AVATARS_SUBDIR, AVATARS_DIR);
+    }
+
+    private UploadResponse storeImage(MultipartFile file, String subdir, Path targetDir) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("Image file is required");
         }
@@ -36,18 +50,29 @@ public class FileStorageServiceImpl implements FileStorageService {
 
         String cleanedOriginalName = StringUtils.cleanPath(
                 file.getOriginalFilename() != null ? file.getOriginalFilename() : "");
+        if (cleanedOriginalName.contains("..")) {
+            throw new BadRequestException("Invalid file name");
+        }
+
         String extension = extractExtension(cleanedOriginalName);
+        if (!extension.isEmpty() && !ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
+            throw new BadRequestException("Unsupported image file extension");
+        }
+
         String storedFileName = UUID.randomUUID() + extension;
 
         try {
-            Files.createDirectories(AD_IMAGES_DIR);
-            Path targetPath = AD_IMAGES_DIR.resolve(storedFileName);
+            Files.createDirectories(targetDir);
+            Path targetPath = targetDir.resolve(storedFileName).normalize();
+            if (!targetPath.startsWith(targetDir.normalize())) {
+                throw new BadRequestException("Invalid file path");
+            }
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new BadRequestException("Failed to store image file");
         }
 
-        String imageKey = AD_IMAGES_SUBDIR + "/" + storedFileName;
+        String imageKey = subdir + "/" + storedFileName;
         return new UploadResponse(imageKey, cleanedOriginalName);
     }
 

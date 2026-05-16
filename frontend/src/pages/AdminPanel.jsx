@@ -110,6 +110,53 @@ function approvalBadgeClass(approvalStatus) {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
+const AVATAR_APPROVAL_LABELS = {
+  PENDING_APPROVAL: "Чака одобрение",
+  APPROVED: "Одобрен",
+  REJECTED: "Отхвърлен",
+};
+
+function avatarApprovalLabel(status) {
+  return AVATAR_APPROVAL_LABELS[status] || "—";
+}
+
+function avatarApprovalBadgeClass(status) {
+  if (status === "PENDING_APPROVAL") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+  if (status === "APPROVED") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+  if (status === "REJECTED") {
+    return "border-red-200 bg-red-50 text-red-800";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function avatarImageUrl(key) {
+  if (!key || !key.trim()) {
+    return "";
+  }
+  const trimmed = key.trim();
+  if (trimmed.startsWith("avatars/")) {
+    return `/uploads/${trimmed}`;
+  }
+  if (trimmed.startsWith("avatar-") && trimmed.endsWith(".png")) {
+    return `/avatars/${trimmed}`;
+  }
+  return "";
+}
+
+function AvatarPreview({ avatarKey, sizeClass }) {
+  const url = avatarImageUrl(avatarKey);
+  if (!url) {
+    return <span className="text-slate-400">—</span>;
+  }
+  return (
+    <img src={url} alt="" className={`rounded-full object-cover ${sizeClass}`} />
+  );
+}
+
 function activeBadgeClass(active) {
   if (active === true) {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
@@ -752,6 +799,509 @@ function AdminAdsTab() {
   );
 }
 
+function AdminAvatarsTab() {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busyRequestId, setBusyRequestId] = useState(null);
+  const [approvalFilter, setApprovalFilter] = useState("PENDING_APPROVAL");
+  const [rejectingRequestId, setRejectingRequestId] = useState(null);
+  const [rejectionMessage, setRejectionMessage] = useState("");
+  const [approvingRequestId, setApprovingRequestId] = useState(null);
+
+  const fetchRequests = useCallback(() => {
+    setLoading(true);
+    setError("");
+    get("/api/admin/avatar-requests")
+      .then((data) => setRequests(Array.isArray(data) ? data : []))
+      .catch(() => setError("Неуспешно зареждане на заявките за аватари."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  async function handleAvatarRequestStatusChange(
+    requestId,
+    nextStatus,
+    message = "",
+  ) {
+    setBusyRequestId(requestId);
+    try {
+      const updated = await patch(`/api/admin/avatar-requests/${requestId}/status`, {
+        status: nextStatus,
+        message,
+      });
+      setRequests((prev) =>
+        prev.map((item) => (item.id === requestId ? updated : item)),
+      );
+    } catch (err) {
+      window.alert(errorMessage(err, "Неуспешна промяна на статуса."));
+    } finally {
+      setBusyRequestId(null);
+    }
+  }
+
+  function openRejectModal(requestId) {
+    setRejectingRequestId(requestId);
+    setRejectionMessage("");
+  }
+
+  function closeRejectModal() {
+    setRejectingRequestId(null);
+    setRejectionMessage("");
+  }
+
+  async function confirmReject() {
+    if (rejectingRequestId == null) {
+      return;
+    }
+    const message = rejectionMessage.trim() === "" ? "" : rejectionMessage.trim();
+    await handleAvatarRequestStatusChange(rejectingRequestId, "REJECTED", message);
+    closeRejectModal();
+  }
+
+  function openApproveModal(requestId) {
+    setApprovingRequestId(requestId);
+  }
+
+  function closeApproveModal() {
+    setApprovingRequestId(null);
+  }
+
+  async function confirmApprove() {
+    if (approvingRequestId == null) {
+      return;
+    }
+    await handleAvatarRequestStatusChange(approvingRequestId, "APPROVED");
+    closeApproveModal();
+  }
+
+  const pendingCount = requests.filter(
+    (item) => item.status === "PENDING_APPROVAL",
+  ).length;
+  const approvedCount = requests.filter((item) => item.status === "APPROVED").length;
+  const rejectedCount = requests.filter((item) => item.status === "REJECTED").length;
+
+  const filteredRequests = requests.filter((item) => {
+    if (approvalFilter === "ALL") {
+      return true;
+    }
+    return item.status === approvalFilter;
+  });
+
+  const avatarApprovalOrder = {
+    PENDING_APPROVAL: 0,
+    REJECTED: 1,
+    APPROVED: 2,
+  };
+
+  const displayedRequests = [...filteredRequests].sort((a, b) => {
+    if (approvalFilter === "ALL") {
+      const orderA = avatarApprovalOrder[a.status] ?? 99;
+      const orderB = avatarApprovalOrder[b.status] ?? 99;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+    }
+
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : NaN;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : NaN;
+    if (Number.isFinite(dateA) && Number.isFinite(dateB) && dateA !== dateB) {
+      return dateB - dateA;
+    }
+
+    return Number(b.id ?? 0) - Number(a.id ?? 0);
+  });
+
+  if (loading) {
+    return (
+      <p className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-600 shadow-sm">
+        Зареждане на аватари…
+      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <p
+        className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        role="alert"
+      >
+        {error}
+      </p>
+    );
+  }
+
+  if (requests.length === 0) {
+    return (
+      <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-600 shadow-sm">
+        Няма заявки за аватари.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={FILTER_BUTTON_CLASS(approvalFilter === "PENDING_APPROVAL")}
+          onClick={() => setApprovalFilter("PENDING_APPROVAL")}
+        >
+          Чакащи ({pendingCount})
+        </button>
+        <button
+          type="button"
+          className={FILTER_BUTTON_CLASS(approvalFilter === "APPROVED")}
+          onClick={() => setApprovalFilter("APPROVED")}
+        >
+          Одобрени ({approvedCount})
+        </button>
+        <button
+          type="button"
+          className={FILTER_BUTTON_CLASS(approvalFilter === "REJECTED")}
+          onClick={() => setApprovalFilter("REJECTED")}
+        >
+          Отхвърлени ({rejectedCount})
+        </button>
+        <button
+          type="button"
+          className={FILTER_BUTTON_CLASS(approvalFilter === "ALL")}
+          onClick={() => setApprovalFilter("ALL")}
+        >
+          Всички ({requests.length})
+        </button>
+      </div>
+
+      {filteredRequests.length === 0 ? (
+        <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-600 shadow-sm">
+          Няма заявки в избрания филтър.
+        </p>
+      ) : (
+        <>
+          <div className="hidden w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm md:block">
+            <table className="w-full min-w-[1100px] table-fixed divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-slate-50 text-center text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-3 py-3 text-center">ID</th>
+                  <th className="px-3 py-3 text-center">Потребител</th>
+                  <th className="px-3 py-3 text-center">Имейл</th>
+                  <th className="px-3 py-3 text-center">Текущ</th>
+                  <th className="px-3 py-3 text-center">Нов</th>
+                  <th className="px-3 py-3 text-center">Статус</th>
+                  <th className="px-3 py-3 text-center">Създадена</th>
+                  <th className="px-3 py-3 text-center">Прегледана</th>
+                  <th className="px-3 py-3 text-center">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {displayedRequests.map((item) => {
+                  const disabled = busyRequestId === item.id;
+                  return (
+                    <tr key={item.id} className="text-slate-700">
+                      <td className="px-3 py-3 font-mono text-xs">{item.id}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-medium text-slate-900">
+                            {item.userName || "—"}
+                          </span>
+                          {item.userId != null ? (
+                            <Link
+                              to={`/users/${item.userId}`}
+                              className="text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                            >
+                              Профил
+                            </Link>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 break-words text-center text-xs">
+                        {item.userEmail || "—"}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-center">
+                          <AvatarPreview avatarKey={item.currentAvatarKey} sizeClass="h-10 w-10" />
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-center">
+                          <AvatarPreview avatarKey={item.imageKey} sizeClass="h-12 w-12" />
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${avatarApprovalBadgeClass(item.status)}`}
+                          >
+                            {avatarApprovalLabel(item.status)}
+                          </span>
+                          {item.status === "REJECTED" && item.approvalMessage ? (
+                            <span className="max-w-[10rem] text-center text-[11px] leading-tight text-red-700">
+                              {item.approvalMessage}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center text-xs text-slate-500">
+                        {formatDate(item.createdAt)}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center text-xs text-slate-500">
+                        {formatDate(item.reviewedAt)}
+                      </td>
+                      <td className="px-3 py-3">
+                        {item.status === "PENDING_APPROVAL" ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              title="Одобри"
+                              aria-label="Одобри"
+                              onClick={() => openApproveModal(item.id)}
+                              className={`${TABLE_ICON_BUTTON_CLASS} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
+                            >
+                              ✓
+                            </button>
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              title="Отхвърли"
+                              aria-label="Отхвърли"
+                              onClick={() => openRejectModal(item.id)}
+                              className={`${TABLE_ICON_BUTTON_CLASS} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : item.status === "REJECTED" ? (
+                          <div className="flex justify-center">
+                            <button
+                              type="button"
+                              disabled={disabled}
+                              onClick={() => openApproveModal(item.id)}
+                              className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                            >
+                              Одобри
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-center text-xs text-slate-500">Одобрен</p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {displayedRequests.map((item) => {
+              const disabled = busyRequestId === item.id;
+              return (
+                <article
+                  key={item.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-mono text-xs text-slate-400">#{item.id}</p>
+                      <h3 className="mt-1 font-semibold text-slate-900">
+                        {item.userName || "—"}
+                      </h3>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${avatarApprovalBadgeClass(item.status)}`}
+                    >
+                      {avatarApprovalLabel(item.status)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-600">{item.userEmail || "—"}</p>
+                  {item.userId != null ? (
+                    <Link
+                      to={`/users/${item.userId}`}
+                      className="mt-1 inline-block text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                    >
+                      Профил
+                    </Link>
+                  ) : null}
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-400">Текущ</p>
+                      <div className="mt-1 flex justify-center">
+                        <AvatarPreview avatarKey={item.currentAvatarKey} sizeClass="h-10 w-10" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400">Нов</p>
+                      <div className="mt-1 flex justify-center">
+                        <AvatarPreview avatarKey={item.imageKey} sizeClass="h-12 w-12" />
+                      </div>
+                    </div>
+                  </div>
+                  {item.status === "REJECTED" && item.approvalMessage ? (
+                    <p className="mt-2 text-xs text-red-700">{item.approvalMessage}</p>
+                  ) : null}
+                  <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-slate-600">
+                    <div>
+                      <dt className="text-slate-400">Създадена</dt>
+                      <dd>{formatDate(item.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Прегледана</dt>
+                      <dd>{formatDate(item.reviewedAt)}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {item.status === "PENDING_APPROVAL" ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          title="Одобри"
+                          aria-label="Одобри"
+                          onClick={() => openApproveModal(item.id)}
+                          className={`${TABLE_ICON_BUTTON_CLASS} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          title="Отхвърли"
+                          aria-label="Отхвърли"
+                          onClick={() => openRejectModal(item.id)}
+                          className={`${TABLE_ICON_BUTTON_CLASS} border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : item.status === "REJECTED" ? (
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => openApproveModal(item.id)}
+                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                      >
+                        Одобри
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-500">Одобрен</span>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {approvingRequestId !== null ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="approve-avatar-title"
+          onClick={() => {
+            if (busyRequestId !== approvingRequestId) {
+              closeApproveModal();
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="approve-avatar-title"
+              className="text-base font-semibold text-slate-900"
+            >
+              Одобряване на аватар
+            </h3>
+            <p className="mt-3 text-sm text-slate-600">
+              Сигурни ли сте, че искате да одобрите този аватар?
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={busyRequestId === approvingRequestId}
+                onClick={closeApproveModal}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отказ
+              </button>
+              <button
+                type="button"
+                disabled={busyRequestId === approvingRequestId}
+                onClick={() => {
+                  void confirmApprove();
+                }}
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+              >
+                Одобри
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {rejectingRequestId !== null ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-avatar-title"
+          onClick={closeRejectModal}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="reject-avatar-title"
+              className="text-base font-semibold text-slate-900"
+            >
+              Отхвърляне на аватар
+            </h3>
+            <label className="mt-4 block text-sm font-medium text-slate-700">
+              Причина (по избор)
+              <textarea
+                rows={4}
+                value={rejectionMessage}
+                disabled={busyRequestId === rejectingRequestId}
+                onChange={(e) => setRejectionMessage(e.target.value)}
+                placeholder="Аватарът не беше одобрен. Моля, качете друга снимка."
+                className="mt-1.5 w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-60"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={busyRequestId === rejectingRequestId}
+                onClick={closeRejectModal}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отказ
+              </button>
+              <button
+                type="button"
+                disabled={busyRequestId === rejectingRequestId}
+                onClick={() => {
+                  void confirmReject();
+                }}
+                className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-60"
+              >
+                Отхвърли
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AdminUsersTab() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1137,7 +1687,7 @@ export default function AdminPanel() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Админ панел</h1>
         <p className="text-sm text-slate-500">
-          Управление на потребители, обяви и отзиви.
+          Управление на потребители, обяви, аватари и отзиви.
         </p>
       </div>
 
@@ -1158,6 +1708,13 @@ export default function AdminPanel() {
         </button>
         <button
           type="button"
+          className={TAB_BUTTON_CLASS(activeTab === "avatars")}
+          onClick={() => setActiveTab("avatars")}
+        >
+          Аватари
+        </button>
+        <button
+          type="button"
           className={TAB_BUTTON_CLASS(activeTab === "reviews")}
           onClick={() => setActiveTab("reviews")}
         >
@@ -1167,6 +1724,7 @@ export default function AdminPanel() {
 
       {activeTab === "ads" ? <AdminAdsTab /> : null}
       {activeTab === "users" ? <AdminUsersTab /> : null}
+      {activeTab === "avatars" ? <AdminAvatarsTab /> : null}
       {activeTab === "reviews" ? <AdminReviewsTab /> : null}
     </div>
   );
